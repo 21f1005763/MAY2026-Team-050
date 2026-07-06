@@ -1,0 +1,43 @@
+/* ==========================================================================
+   Jan Setu application experience — authenticated visual system
+   ========================================================================== */
+@import url("https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap");
+
+:root {
+  --js-cream: #fbf8f2;
+  --js-paper: #fff;
+  --js-teal: #0f766e;
+  --js-teal-deep: #0b5c55;
+  --js-teal-pale: #ddf0ed;
+  --js-orange: #f0940a;
+  --js-orange-deep: #d97f06;
+  --js-ink: #1f2a2e;
+  --js-muted: #566266;
+  --js-faint: #939c9c;
+  --js-line: #e7e0cf;
+  --js-soft: #f3eee1;
+  --js-danger: #b23a2e;
+  --text-muted: #566266;
+  --text-subtle: #626d70;
+  --text-on-accent: #fff;
+  --danger-hover: #922f26;
+  --status-success: #2f7d4f;
+  --status-success-surface: #e2f0e7;
+  --status-warning-surface: #fce9cc;
+  --focus-ring: color-mix(in srgb, var(--js-orange) 75%, white);
+  --font-display: "Lexend", "Noto Sans Devanagari", sans-serif;
+  --font-body: "Lexend", "Noto Sans Devanagari", -apple-system, BlinkMacSystemFont, sans-serif;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-xl: 24px;
+  --radius-control: 12px;
+  --radius-card: 17px;
+  --shadow-card: 0 20px 38px -32px rgba(31,42,46,.6);
+}
+body { background: var(--js-cream); color: var(--js-ink); font-family: var(--font-body); }
+
