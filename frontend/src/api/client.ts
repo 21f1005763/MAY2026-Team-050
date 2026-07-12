@@ -1,4 +1,4 @@
-import { getAccessToken } from "../auth/AuthContext";
+import { getAccessToken, setAccessToken } from "../auth/AuthContext";
 
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "";
 
@@ -23,25 +23,91 @@ function buildHeaders(extra?: HeadersInit, includeAuth = true): Headers {
   return headers;
 }
 
+/**
+ * Attempts to refresh the access token using the httpOnly refresh cookie.
+ * Returns the new token on success, or null if the refresh failed.
+ *
+ * Single-flight: refresh tokens rotate on use, so two concurrent refreshes
+ * (StrictMode double-mount on boot, parallel 401 retries) race — the loser
+ * presents an already-revoked cookie, gets a 401, and logs the user out.
+ */
+let refreshInFlight: Promise<string | null> | null = null;
+
+function refreshAccessToken(): Promise<string | null> {
+  refreshInFlight ??= (async () => {
+    try {
+      const response = await fetch(`${API_BASE}/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) return null;
+      const data = (await response.json()) as { access_token: string };
+      setAccessToken(data.access_token);
+      return data.access_token;
+    } catch {
+      return null;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+  return refreshInFlight;
+}
+
+/**
+ * Attempts to silently restore a session from the httpOnly refresh cookie on
+ * app boot. The access token only ever lives in memory, so a hard page
+ * reload always starts with none — without this, a refresh would otherwise
+ * bounce a still-logged-in citizen back to /login.
+ */
+export async function restoreSession(): Promise<string | null> {
+  return refreshAccessToken();
+}
+
+function redirectToLogin(): void {
+  setAccessToken(null);
+  if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+    window.location.assign("/login");
+  }
+}
+
 interface RequestOptions extends RequestInit {
   /** Attach the in-memory access token as a Bearer header. Defaults to true. */
   auth?: boolean;
+  /** Internal flag — prevents infinite refresh retry loops. */
+  _isRetry?: boolean;
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { auth = true, headers, ...rest } = options;
+  const { auth = true, _isRetry = false, headers, ...rest } = options;
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...rest,
-    headers: buildHeaders(headers, auth),
-    credentials: "include",
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      ...rest,
+      credentials: "include",
+      headers: buildHeaders(headers, auth),
+    });
+  } catch {
+    throw new ApiError(0, "We couldn’t reach Jan Setu. Check your connection and try again.");
+  }
+
+  if (response.status === 401 && auth && !_isRetry) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      return request<T>(path, { ...options, _isRetry: true });
+    }
+    redirectToLogin();
+    throw new ApiError(401, "Session expired. Please log in again.");
+  }
 
   if (!response.ok) {
     throw new ApiError(response.status, response.statusText || `Request failed with status ${response.status}`);
   }
 
-  if (response.status === 204) return undefined as T;
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   return (await response.json()) as T;
 }
 
@@ -50,12 +116,15 @@ export function apiGet<T>(path: string, options?: RequestOptions): Promise<T> {
 }
 
 export function apiPostJson<T>(path: string, body: unknown, options?: RequestOptions): Promise<T> {
-  const headers = new Headers(options?.headers);
-  headers.set("Content-Type", "application/json");
   return request<T>(path, {
     ...options,
     method: "POST",
-    headers,
     body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) },
   });
 }
+
+export function apiPostEmpty<T>(path: string, options?: RequestOptions): Promise<T> {
+  return request<T>(path, { ...options, method: "POST" });
+}
+
