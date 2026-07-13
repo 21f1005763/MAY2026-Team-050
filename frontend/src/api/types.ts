@@ -25,3 +25,30 @@ export interface LogoutResponse {
   status: string;
 }
 
+export type ImageMatchStatus = "none" | "matched" | "mismatched" | "skipped";
+
+export type GrievanceStatus =
+  | "draft"
+  | "processing"
+  | "awaiting_confirmation"
+  | "photo_mismatch"
+  | "registered"
+  | "pending_window"
+  | "dispatching"
+  | "submitted"
+  | "duplicate"
+  | "cancelled"
+  | "dispatch_failed";
+
+export type GrievanceSource = "whatsapp" | "web";
+
+export interface GrievanceSummary {
+  id: string;
+  human_id: string;
+  category: string | null;
+  status: string;
+  priority: string | null;
+  source: GrievanceSource;
+  created_at: string;
+}
+
