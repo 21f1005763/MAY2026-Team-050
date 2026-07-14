@@ -124,6 +124,24 @@ export function apiPostJson<T>(path: string, body: unknown, options?: RequestOpt
   });
 }
 
+export function apiPostForm<T>(path: string, formData: FormData, options?: RequestOptions): Promise<T> {
+  // Do not set Content-Type manually — the browser must add the multipart boundary.
+  return request<T>(path, { ...options, method: "POST", body: formData });
+}
+
+export function apiPatchForm<T>(path: string, formData: FormData, options?: RequestOptions): Promise<T> {
+  return request<T>(path, { ...options, method: "PATCH", body: formData });
+}
+
+export function apiPatchJson<T>(path: string, body: unknown, options?: RequestOptions): Promise<T> {
+  return request<T>(path, {
+    ...options,
+    method: "PATCH",
+    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) },
+  });
+}
+
 export function apiPostEmpty<T>(path: string, options?: RequestOptions): Promise<T> {
   return request<T>(path, { ...options, method: "POST" });
 }
