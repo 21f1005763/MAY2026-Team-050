@@ -80,3 +80,59 @@ What they need from Jan-Setu:
 • A simple explanation of the category and destination of a complaint.
 • A reliable way to attach evidence and review details before submitting.
 • Transparency about whether a complaint is being reviewed, grouped, routed, or completed.
+
+
+======================================================================
+2. SECONDARY USERS: GOVERNMENT OFFICIALS AND COMPLAINT RECEIVERS
+======================================================================
+
+Government officials and complaint receivers use Jan-Setu to review incoming complaints, understand the issue, decide whether action is needed, and send cases to the right team.
+
+They need a system that reduces manual effort without removing human judgement.
+
+
+2.1 MUNICIPAL COMPLAINT CLERKS
+
+Example profile: Sanjay Kumar, Head Clerk, Patna Nagar Nigam
+
+Who they are:
+• Municipal staff members who receive, register, sort, and forward public complaints.
+• People who may handle a high number of complaints every day.
+• People responsible for ensuring cases reach the appropriate team.
+
+Current difficulties:
+• The entire workflow may depend on paper registers, calls, and manual forwarding.
+• They may handle around 60 to 250 complaints in a day.
+• Complaints often arrive missing important information such as location, contact details, or a proper description.
+• Fixing incomplete complaints can add one or two days to processing.
+• They may need to manually identify the problem type and responsible department.
+
+What they need from Jan-Setu:
+• A clear official complaint queue.
+• Complaints with location, contact information, and issue description already collected.
+• A short system-generated summary and suggested category.
+• Visible priority, safety, and evidence-related flags.
+• Options to approve a route, redirect a case, ask for clarification, or reject a case with a reason.
+• A record of actions taken on each complaint.
+
+
+2.2 UTILITY DEPARTMENT CLERKS
+
+Example profile: Savitur Tyagi, Clerk, Bijli Vibhag, West Midnapore
+
+Who they are:
+• Staff members working in specialised service departments, such as electricity, water, sanitation, roads, or drainage.
+• People who need to receive cases that fall within their department’s area of responsibility.
+
+Current difficulties:
+• Department portals may exist but are not widely used by citizens.
+• Many citizens still report problems in person.
+• Staff often receive complaints meant for a different department.
+• Misrouted cases waste staff time and delay action for citizens.
+
+What they need from Jan-Setu:
+• Better routing based on the complaint type and location.
+• Clear case summaries before they begin work.
+• Fewer duplicate and irrelevant complaints.
+• Clear information when a case needs review rather than automatic routing.
+• A way to receive priority cases quickly.
