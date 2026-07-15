@@ -1,0 +1,46 @@
+JAN-SETU: PROBLEMS AND FEATURES
+
+Jan-Setu is a civic complaint platform that helps people report local problems—such as damaged roads, broken streetlights, drainage issues, sanitation concerns, or safety-related problems—and follow what happens next.
+
+It works through a citizen web app and a WhatsApp-based flow. The aim is simple: make it easier for citizens to file a complete complaint, send it to the right government team, and keep the process visible.
+
+======================================================================
+PROBLEM 1: Filing a complaint takes too much time and effort
+======================================================================
+
+Many people must visit offices more than once to report a civic issue. This is difficult for people living far from offices, people with limited time, and people who are not comfortable with government procedures. It can also create unfairness when people feel they need personal connections to get heard.
+
+JAN-SETU FEATURES
+
+• File from a phone
+  Citizens can report an issue from the Jan-Setu web app instead of starting with an office visit.
+
+• WhatsApp-based complaint flow
+  People can use a familiar WhatsApp conversation to share their location, explain the problem, attach a photo if available, and confirm the complaint.
+
+• One identity across channels
+  A WhatsApp-linked phone number is used for sign-in, so the same person can use both the web app and WhatsApp flow.
+
+• Guided, step-by-step filing
+  The app breaks filing into simple steps: select location, explain the issue, add a photo if wanted, review details, and submit.
+
+
+======================================================================
+PROBLEM 2: People may struggle to describe an issue in writing
+======================================================================
+
+Not everyone is comfortable typing a long complaint, especially when using a phone, speaking a local language, or dealing with an urgent problem outdoors.
+
+JAN-SETU FEATURES
+
+• Voice complaint recording
+  Citizens can record a voice note instead of typing everything.
+
+• Speech converted to text
+  The system converts recorded speech into written complaint details for processing.
+
+• Text, voice, and photo support
+  Citizens can explain the issue in the way that is easiest for them: typed text, a voice recording, or an optional photo.
+
+• Multilingual citizen interface
+  The web app supports English, Hindi, Bengali, Marathi, Tamil, and Telugu, helping more people use the service comfortably.
