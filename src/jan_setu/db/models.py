@@ -1,0 +1,69 @@
+import uuid
+from datetime import datetime
+from typing import Any
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from jan_setu.db.session import Base, utc_now
+
+
+class TimestampMixin:
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
+    )
+
+class Contact(TimestampMixin, Base):
+    __tablename__ = "contacts"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    wa_id: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
+    profile_name: Mapped[str | None] = mapped_column(String(255))
+
+    messages: Mapped[list["WhatsAppMessage"]] = relationship(back_populates="contact")
+
+class WhatsAppMessage(TimestampMixin, Base):
+    __tablename__ = "whatsapp_messages"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    contact_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("contacts.id", ondelete="SET NULL"), index=True
+    )
+    meta_message_id: Mapped[str | None] = mapped_column(String(255), unique=True)
+    direction: Mapped[str] = mapped_column(String(16), nullable=False)
+    message_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    text_body: Mapped[str | None] = mapped_column(Text)
+    media_id: Mapped[str | None] = mapped_column(String(255))
+    media_mime_type: Mapped[str | None] = mapped_column(String(255))
+    location_latitude: Mapped[float | None] = mapped_column(Float)
+    location_longitude: Mapped[float | None] = mapped_column(Float)
+    location_name: Mapped[str | None] = mapped_column(String(255))
+    location_address: Mapped[str | None] = mapped_column(Text)
+    location_url: Mapped[str | None] = mapped_column(Text)
+    raw_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    received_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, index=True
+    )
+
+    # Interactive-reply fields parsed from inbound webhooks (button/list taps).
+    # reply_id is the stable button/list id the FSM branches on; context_message_id
+    # is the wamid this reply targets (Meta's message.context.id).
+    reply_id: Mapped[str | None] = mapped_column(String(256))
+    interactive_type: Mapped[str | None] = mapped_column(String(32))
+    button_payload: Mapped[str | None] = mapped_column(Text)
+    context_message_id: Mapped[str | None] = mapped_column(String(255))
+
+    # Outbound dispatch state machine. status: received (inbound) | pending |
+    # sending | sent | failed | blocked_24h. "sent" means accepted by Graph, not
+    # delivered. idempotency_key makes replays collide instead of double-sending.
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="received")
+    idempotency_key: Mapped[str | None] = mapped_column(String(255), unique=True)
+    reply_kind: Mapped[str | None] = mapped_column(String(32))
+    conversation_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("conversations.id", ondelete="SET NULL"), index=True
+    )
+    in_response_to_message_id: Mapped[str | None] = mapped_column(String(255))
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    contact: Mapped[Contact | None] = relationship(back_populates="messages")
