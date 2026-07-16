@@ -136,3 +136,51 @@ What they need from Jan-Setu:
 • Fewer duplicate and irrelevant complaints.
 • Clear information when a case needs review rather than automatic routing.
 • A way to receive priority cases quickly.
+
+
+======================================================================
+3. TERTIARY USERS: INDIRECT STAKEHOLDERS
+======================================================================
+
+These users may not use Jan-Setu as often as citizens or clerks, but the platform affects their work and helps them respond more effectively.
+
+
+3.1 FIELD OFFICERS
+
+Example profile: Sarvesh Pandey, CISF
+
+Who they are:
+• People who respond on the ground or investigate urgent public issues.
+• Staff who may currently receive complaints only after they pass through several offices.
+
+Current difficulties:
+• Complaints can arrive through slow manual forwarding chains.
+• Urgent cases may be delayed along with routine complaints.
+• Field teams may not receive enough location or evidence information before responding.
+
+What they need from Jan-Setu:
+• Faster access to priority or safety-related complaints.
+• Accurate location information.
+• Clear descriptions, photos, and other supporting details where available.
+• Better routing so the correct field team receives the case sooner.
+
+
+3.2 INSTITUTIONAL ADMINISTRATIVE STAFF
+
+Example profile: Vivek Kumar, Library Staff
+
+Who they are:
+• Administrative staff in institutions such as schools, libraries, public offices, campuses, or other public-serving organisations.
+• People who may manage complaints inside their own organisation or coordinate with local authorities.
+
+Current difficulties:
+• Complaint handling may rely on manual records and informal follow-up.
+• There may be no clear tracking system.
+• Staff may not know whether a reported issue has been acted on.
+• Repeated follow-ups can take time away from regular work.
+
+What they need from Jan-Setu:
+• A structured way to register and follow complaints.
+• Clear status updates.
+• Less manual coordination and fewer repeated phone calls.
+• A visible history of what was reported and what happened next.

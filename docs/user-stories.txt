@@ -1,0 +1,54 @@
+JAN-SETU: SMART USER STORIES
+
+======================================================================
+3.1 ONE-TIME REGISTRATION VIA WHATSAPP-LINKED MOBILE NUMBER
+======================================================================
+
+As a citizen, I want to register on Jan-Setu using my WhatsApp-linked mobile number, so that I can access both the web app and WhatsApp bot under a single identity.
+
+Specific:
+OTP sent to WhatsApp-linked mobile; one account grants access to both channels.
+
+Measurable:
+OTP delivered within 60 sec; registration completed under 2 min.
+
+Actionable:
+OTP verification via WhatsApp Business API.
+
+Relevant:
+Removes first-time digital entry barrier — P4, P6.
+
+Time-bound:
+Full registration in under 2 minutes.
+
+Acceptance Criteria:
+• OTP delivered within 60 seconds; registration completes in under 2 minutes.
+• One account grants access to both web app and WhatsApp bot.
+• UI available in Hindi and English.
+
+
+======================================================================
+3.2 VOICE NOTE COMPLAINT FILING VIA WHATSAPP BOT
+======================================================================
+
+As Pintu Yadav, I want to describe my complaint in Hindi via a WhatsApp voice note, so that I can file an issue without typing or visiting a government office.
+
+Specific:
+Voice note transcribed by Sarvam.ai multilingual STT via the Jan-Setu WhatsApp bot.
+
+Measurable:
+Transcription returned within 30 sec; user confirms before submission.
+
+Actionable:
+Sarvam.ai STT API integrated into WhatsApp bot pipeline.
+
+Relevant:
+Removes language and literacy barriers — P1, P5.
+
+Time-bound:
+Transcription returned within 30 seconds of voice note submission.
+
+Acceptance Criteria:
+• Bot accepts voice notes up to 2 minutes; transcription returned within 30 seconds.
+• Transcribed text shown to user for confirmation before filing.
+• Low-confidence transcriptions prompt the user to re-record or type.
