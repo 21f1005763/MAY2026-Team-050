@@ -44,3 +44,66 @@ JAN-SETU FEATURES
 
 • Multilingual citizen interface
   The web app supports English, Hindi, Bengali, Marathi, Tamil, and Telugu, helping more people use the service comfortably.
+
+
+======================================================================
+PROBLEM 3: Citizens do not know which department should receive a complaint
+======================================================================
+
+A person may know there is a pothole, broken drain, or streetlight problem, but may not know which municipal department is responsible. Wrong routing wastes time for both citizens and officials.
+
+JAN-SETU FEATURES
+
+• Location capture
+  Citizens choose the location of the problem on a map or use their phone’s current location. They can also add a nearby landmark.
+
+• Automatic issue understanding
+  The system reads the complaint details and identifies the likely issue category.
+
+• Suggested department routing
+  Based on the problem type and location, Jan-Setu identifies the appropriate municipal department or flags the case for official review when the route is unclear.
+
+• Citizen review before confirmation
+  Before the complaint is finalised, citizens can review the system’s summary and key details.
+
+
+======================================================================
+PROBLEM 4: Incomplete complaints delay government action
+======================================================================
+
+Officials often receive complaints without a usable location, contact details, or clear description. They then need to call the citizen or wait for more information, delaying the response.
+
+JAN-SETU FEATURES
+
+• Required complaint details
+  The filing flow asks for the essential information needed to act: location and a description of the issue.
+
+• Clear field guidance
+  The app tells users what information is needed before they can continue.
+
+• Location confirmation in WhatsApp
+  When someone shares a WhatsApp location, Jan-Setu shows the detected address and asks them to confirm it.
+
+• Complaint review screen
+  Citizens can inspect the prepared complaint before submitting it, reducing mistakes and missing information.
+
+
+======================================================================
+PROBLEM 5: Photos may be unrelated or misleading
+======================================================================
+
+Photos can help officials understand a complaint, but an unclear or unrelated image can waste review time.
+
+JAN-SETU FEATURES
+
+• Optional photo evidence
+  Citizens can attach a photo of the issue during filing.
+
+• Photo and description check
+  Jan-Setu compares the submitted image with the written complaint. If they appear inconsistent, it flags the case instead of silently treating the photo as reliable.
+
+• Choice to replace or continue
+  A citizen can provide a replacement photo or continue without one when a photo does not match the complaint details.
+
+• Evidence visible to officials
+  Officials can see the complaint text, location, system findings, and flags while reviewing a case.
