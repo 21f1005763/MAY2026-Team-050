@@ -1,0 +1,8 @@
+3.1 How We Work: Agile Framework & Team Rhythm
+
+To keep our momentum steady and stay aligned across design, frontend, backend, and QA, we work in 2-week sprint cycles (condensed to 10-day sprints during build-heavy phases). Here is our regular routine:
+
+Sprint Planning: On the first day of every sprint, we review our backlog, set our primary goal, estimate effort in Jira, and assign task ownership.
+Standups / Sync Meetings: Every Monday, Wednesday, and Friday, we meet briefly to share progress, clear blockers, and keep our Kanban board up to date.
+Sprint Review & Client Demo: In client meetings we demo working features to our stakeholders (Balasurya K & Sonika Pal) to gather early, actionable feedback.
+Sprint Retrospective: Right after the demo, we reflect on how we worked together, pinpoint bottlenecks, and tweak our processes for the sprint submission and for next cycles.
