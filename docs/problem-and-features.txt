@@ -107,3 +107,48 @@ JAN-SETU FEATURES
 
 • Evidence visible to officials
   Officials can see the complaint text, location, system findings, and flags while reviewing a case.
+
+
+======================================================================
+PROBLEM 6: Staff spend too much time manually sorting complaints
+======================================================================
+
+Government teams may receive many complaints each day. Reading every complaint, deciding its category, checking priority, and forwarding it manually slows down the entire process.
+
+JAN-SETU FEATURES
+
+• Automatic categorisation
+  The system prepares a category and a short summary for each complaint.
+
+• Priority and safety indicators
+  Cases that may need immediate attention are marked for the officials’ queue.
+
+• Short-term and long-term work grouping
+  Complaints can be identified as likely short-term fixes or longer-term projects, helping staff plan work.
+
+• Official review queue
+  Government staff have a separate console to review cases needing attention. They can approve a route, redirect a case, ask the citizen for clarification, or reject it with a written reason.
+
+• Clear case information for officials
+  The official view shows complaint details, location, category, confidence, routing information, system flags, and a history of actions.
+
+
+======================================================================
+PROBLEM 7: Many reports describe the same non-urgent issue
+======================================================================
+
+If many people report the same pothole, drain blockage, or streetlight failure, officials can receive many separate tickets for one local problem.
+
+JAN-SETU FEATURES
+
+• Duplicate report detection
+  Jan-Setu looks for similar non-priority complaints in the same area.
+
+• Combined reporting window
+  Similar routine reports can be grouped so the department receives one clearer issue with the number of affected citizens.
+
+• Citizen acknowledgement
+  When a report is linked to an existing local issue, the citizen is still informed that their report was counted.
+
+• Fast handling for priority cases
+  Priority complaints do not wait in the routine grouping window. They move toward immediate dispatch or official review.
