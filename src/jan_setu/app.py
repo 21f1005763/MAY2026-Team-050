@@ -8,6 +8,7 @@ import httpx
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from jan_setu.whatsapp.api import router
 from jan_setu.config import configure_logging, get_settings
 from jan_setu.logctx import request_id_var
 
@@ -38,6 +39,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     add_request_logging(app)
+    app.include_router(router)
     return app
 
 

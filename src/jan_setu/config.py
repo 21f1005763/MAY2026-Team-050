@@ -15,6 +15,8 @@ Environment = Literal["development", "test", "staging", "production"]
 
 DEV_POSTGRES_PASSWORD = "jan_setu_dev_password"
 
+DEV_VERIFY_TOKEN = "dev_verify_token"
+
 class Settings(BaseSettings):
     environment: Environment = "development"
     log_level: str = "INFO"
@@ -27,6 +29,19 @@ class Settings(BaseSettings):
     database_url: str | None = None
     db_pool_size: int = 5
     db_max_overflow: int = 10
+    whatsapp_verify_token: str = DEV_VERIFY_TOKEN
+    whatsapp_app_secret: SecretStr | None = None
+    whatsapp_access_token: SecretStr | None = None
+    whatsapp_phone_number_id: str | None = None
+    whatsapp_graph_api_version: str = "v25.0"
+    request_timeout_seconds: float = 10.0
+    # Digits-only WhatsApp Business number (no +) for wa.me/<number> deep links.
+    # Distinct from whatsapp_phone_number_id, which is Meta's internal Graph id.
+    public_wa_number: str | None = None
+    api_key: SecretStr | None = None
+    auto_reply_enabled: bool = False
+    worker_poll_seconds: float = 2.0
+    worker_batch_size: int = 10
     # Web frontend.
     cors_origins: str = "http://localhost:5173"
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")

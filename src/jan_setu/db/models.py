@@ -67,3 +67,21 @@ class WhatsAppMessage(TimestampMixin, Base):
     attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     contact: Mapped[Contact | None] = relationship(back_populates="messages")
+
+class WebhookEvent(Base):
+    __tablename__ = "webhook_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    source: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    signature_valid: Mapped[bool] = mapped_column(nullable=False, default=False)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, index=True
+    )
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Lease fields for the unified drive_event claim (the api background task
+    # AND the worker sweep both claim through this row-lease, same pattern as
+    # outbound sends, so a race between them can no longer drop an event's FSM
+    # turns silently).
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
