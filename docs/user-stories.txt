@@ -52,3 +52,83 @@ Acceptance Criteria:
 • Bot accepts voice notes up to 2 minutes; transcription returned within 30 seconds.
 • Transcribed text shown to user for confirmation before filing.
 • Low-confidence transcriptions prompt the user to re-record or type.
+
+
+======================================================================
+3.3 LOCATION-BASED ROUTING TO CORRECT MUNICIPAL DEPARTMENT
+======================================================================
+
+As Namrita Singh, I want Jan-Setu to automatically assign the right department based on my complaint and location, so that I don't need to know government structure to file correctly.
+
+Specific:
+LLM classifies incident type; location maps complaint to the correct municipal jurisdiction.
+
+Measurable:
+Department assigned within 10 sec; shown to user before final submission.
+
+Actionable:
+LLM classification via OpenRouter + geolocation-to-department mapping.
+
+Relevant:
+Eliminates department-identification barrier — P2.
+
+Time-bound:
+Classification completed within 10 seconds of submission.
+
+Acceptance Criteria:
+• Department auto-assigned within 10 seconds based on location and complaint content.
+• User can view and correct the department assignment before confirming.
+• Misrouted complaints flagged for manual clerk review within 1 hour.
+
+
+======================================================================
+3.4 LLM IMAGE VERIFICATION AGAINST COMPLAINT DESCRIPTION
+======================================================================
+
+As Sanjay Kumar, I want the system to flag complaints where the photo doesn't match the text description, so that inconsistent submissions are caught before reaching my dashboard.
+
+Specific:
+Multimodal LLM compares submitted image to complaint text and scores consistency.
+
+Measurable:
+Verification completed within 15 sec; flagged complaints visually marked in the dashboard.
+
+Actionable:
+Multimodal LLM image-text comparison via OpenRouter.
+
+Relevant:
+Filters unverified or misrepresented submissions — P7.
+
+Time-bound:
+Result available within 15 seconds of submission.
+
+Acceptance Criteria:
+• Low-consistency complaints are flagged in the clerk's dashboard, not auto-rejected.
+• Verification result stored in the complaint audit trail.
+
+
+======================================================================
+3.5 COMPLAINT CLASSIFICATION AS SHORT-TERM FIX OR LONG-TERM PROJECT
+======================================================================
+
+As Sanjay Kumar, I want complaints to arrive pre-tagged by resolution scope, so that I can prioritise work without manual triage.
+
+Specific:
+LLM classifies each complaint as "Short-Term Fix" or "Long-Term Project" at intake.
+
+Measurable:
+Every complaint arrives tagged; zero unclassified complaints reach the dashboard.
+
+Actionable:
+LLM prompt-based classification via OpenRouter.
+
+Relevant:
+Reduces manual classification overhead — P9.
+
+Time-bound:
+Classification completed within 10 seconds of submission.
+
+Acceptance Criteria:
+• Every complaint is tagged before entering the clerk's queue.
+• Short-term and long-term complaints are displayed in separate dashboard sections.
+• Clerk can override the classification with a single action.
