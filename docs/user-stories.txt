@@ -132,3 +132,56 @@ Acceptance Criteria:
 • Every complaint is tagged before entering the clerk's queue.
 • Short-term and long-term complaints are displayed in separate dashboard sections.
 • Clerk can override the classification with a single action.
+
+
+======================================================================
+3.6 AGGREGATION TIME WINDOW FOR NON-PRIORITY COMPLAINTS
+======================================================================
+
+As Sanjay Kumar, I want duplicate non-priority complaints about the same issue to be merged before submission, so that my department receives one consolidated report instead of dozens of individual duplicates.
+
+Specific:
+Non-priority categories (sanitation, potholes, streetlamps, drainage) held in a location-based time window; duplicates merged before forwarding.
+
+Measurable:
+Department receives a single consolidated entry with affected-citizen count attached.
+
+Actionable:
+Location-clustering logic + configurable time-window rules in Jan-Setu backend.
+
+Relevant:
+Reduces duplicate complaint volume — P9, P10.
+
+Time-bound:
+Consolidated report forwarded at close of the configured time window.
+
+Acceptance Criteria:
+• Complaints within the same location radius and category are merged during the window.
+• Consolidated report includes count of citizens who reported the same issue.
+• Filing citizens receive confirmation that their complaint is part of a consolidated submission.
+
+
+======================================================================
+3.7 IMMEDIATE FILING FOR PRIORITY COMPLAINTS
+======================================================================
+
+As Aditya Singh, I want priority complaints (e.g., animal cruelty) to bypass the aggregation window and be filed immediately, so that urgent issues aren't delayed by routines designed for non-critical matters.
+
+Specific:
+Priority complaint categories bypass the aggregation window; forwarded instantly upon LLM classification.
+
+Measurable:
+Complaint reaches the responsible department within 5 minutes of submission.
+
+Actionable:
+Routing rules override aggregation logic for defined priority categories.
+
+Relevant:
+Ensures urgent issues are not held alongside routine complaints — P1.
+
+Time-bound:
+Department receives complaint within 5 minutes of citizen submission.
+
+Acceptance Criteria:
+• Priority complaints bypass aggregation and are forwarded within 5 minutes of classification.
+• Citizen receives immediate acknowledgment confirming the complaint is fast-tracked.
