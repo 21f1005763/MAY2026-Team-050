@@ -112,3 +112,167 @@ CREATE TABLE public.webhook_events (
 );
 CREATE INDEX ix_webhook_events_created_at ON public.webhook_events USING btree (created_at);
 CREATE INDEX ix_webhook_events_source ON public.webhook_events USING btree (source);
+
+
+-- public.conversations definition
+
+-- Drop table
+
+-- DROP TABLE public.conversations;
+
+CREATE TABLE public.conversations (
+	id uuid NOT NULL,
+	contact_id uuid NOT NULL,
+	state varchar(32) NOT NULL,
+	context jsonb NOT NULL,
+	state_version int4 NOT NULL,
+	active bool NOT NULL,
+	last_user_message_at timestamptz NULL,
+	service_window_expires_at timestamptz NULL,
+	expires_at timestamptz NULL,
+	created_at timestamptz NOT NULL,
+	updated_at timestamptz NOT NULL,
+	CONSTRAINT pk_conversations PRIMARY KEY (id),
+	CONSTRAINT fk_conversations_contact_id_contacts FOREIGN KEY (contact_id) REFERENCES public.contacts(id) ON DELETE CASCADE
+);
+CREATE INDEX ix_conversations_contact_id ON public.conversations USING btree (contact_id);
+CREATE UNIQUE INDEX uq_conversations_active_contact ON public.conversations USING btree (contact_id) WHERE active;
+
+
+-- public.fsm_message_consumptions definition
+
+-- Drop table
+
+-- DROP TABLE public.fsm_message_consumptions;
+
+CREATE TABLE public.fsm_message_consumptions (
+	id uuid NOT NULL,
+	inbound_message_id varchar(255) NOT NULL,
+	conversation_id uuid NULL,
+	state_before varchar(32) NULL,
+	state_after varchar(32) NULL,
+	created_at timestamptz NOT NULL,
+	CONSTRAINT pk_fsm_message_consumptions PRIMARY KEY (id),
+	CONSTRAINT uq_fsm_message_consumptions_inbound_message_id UNIQUE (inbound_message_id),
+	CONSTRAINT fk_fsm_message_consumptions_conversation_id_conversations FOREIGN KEY (conversation_id) REFERENCES public.conversations(id) ON DELETE SET NULL
+);
+CREATE INDEX ix_fsm_message_consumptions_conversation_id ON public.fsm_message_consumptions USING btree (conversation_id);
+
+
+-- public.jurisdiction_routes definition
+
+-- Drop table
+
+-- DROP TABLE public.jurisdiction_routes;
+
+CREATE TABLE public.jurisdiction_routes (
+	id uuid NOT NULL,
+	jurisdiction_id varchar(64) NOT NULL,
+	taxonomy_version varchar(32) NOT NULL,
+	category_id varchar(96) NOT NULL,
+	department_key varchar(64) NOT NULL,
+	owning_agency varchar(255) NOT NULL,
+	dispatch_target jsonb NULL,
+	dispatch_enabled bool DEFAULT false NOT NULL,
+	sla_hours int4 NULL,
+	source_url text NULL,
+	reviewed_by varchar(255) NULL,
+	effective_from timestamptz NULL,
+	effective_to timestamptz NULL,
+	created_at timestamptz NOT NULL,
+	updated_at timestamptz NOT NULL,
+	CONSTRAINT pk_jurisdiction_routes PRIMARY KEY (id),
+	CONSTRAINT uq_jurisdiction_route_version_category UNIQUE (jurisdiction_id, taxonomy_version, category_id),
+	CONSTRAINT fk_jurisdiction_routes_jurisdiction_id_jurisdictions FOREIGN KEY (jurisdiction_id) REFERENCES public.jurisdictions(id) ON DELETE CASCADE
+);
+CREATE INDEX ix_jurisdiction_routes_jurisdiction_id ON public.jurisdiction_routes USING btree (jurisdiction_id);
+
+
+-- public.official_users definition
+
+-- Drop table
+
+-- DROP TABLE public.official_users;
+
+CREATE TABLE public.official_users (
+	id uuid NOT NULL,
+	email varchar(320) NOT NULL,
+	"name" varchar(255) NOT NULL,
+	"role" varchar(32) NOT NULL,
+	jurisdiction_id varchar(64) NOT NULL,
+	department_keys jsonb DEFAULT '[]'::jsonb NOT NULL,
+	active bool DEFAULT true NOT NULL,
+	last_login_at timestamptz NULL,
+	created_at timestamptz NOT NULL,
+	updated_at timestamptz NOT NULL,
+	CONSTRAINT pk_official_users PRIMARY KEY (id),
+	CONSTRAINT uq_official_users_email UNIQUE (email),
+	CONSTRAINT fk_official_users_jurisdiction_id_jurisdictions FOREIGN KEY (jurisdiction_id) REFERENCES public.jurisdictions(id) ON DELETE RESTRICT
+);
+CREATE INDEX ix_official_users_jurisdiction_id ON public.official_users USING btree (jurisdiction_id);
+
+
+-- public.users definition
+
+-- Drop table
+
+-- DROP TABLE public.users;
+
+CREATE TABLE public.users (
+	id uuid NOT NULL,
+	phone varchar(32) NOT NULL,
+	contact_id uuid NULL,
+	"name" varchar(255) NULL,
+	created_at timestamptz NOT NULL,
+	updated_at timestamptz NOT NULL,
+	CONSTRAINT pk_users PRIMARY KEY (id),
+	CONSTRAINT uq_users_contact_id UNIQUE (contact_id),
+	CONSTRAINT uq_users_phone UNIQUE (phone),
+	CONSTRAINT fk_users_contact_id_contacts FOREIGN KEY (contact_id) REFERENCES public.contacts(id) ON DELETE SET NULL
+);
+
+
+-- public.whatsapp_messages definition
+
+-- Drop table
+
+-- DROP TABLE public.whatsapp_messages;
+
+CREATE TABLE public.whatsapp_messages (
+	id uuid NOT NULL,
+	contact_id uuid NULL,
+	meta_message_id varchar(255) NULL,
+	direction varchar(16) NOT NULL,
+	message_type varchar(64) NOT NULL,
+	text_body text NULL,
+	media_id varchar(255) NULL,
+	media_mime_type varchar(255) NULL,
+	location_latitude float8 NULL,
+	location_longitude float8 NULL,
+	location_name varchar(255) NULL,
+	location_address text NULL,
+	location_url text NULL,
+	raw_payload jsonb NOT NULL,
+	received_at timestamptz NOT NULL,
+	created_at timestamptz NOT NULL,
+	updated_at timestamptz NOT NULL,
+	reply_id varchar(256) NULL,
+	interactive_type varchar(32) NULL,
+	button_payload text NULL,
+	context_message_id varchar(255) NULL,
+	status varchar(16) NOT NULL,
+	idempotency_key varchar(255) NULL,
+	reply_kind varchar(32) NULL,
+	conversation_id uuid NULL,
+	in_response_to_message_id varchar(255) NULL,
+	locked_until timestamptz NULL,
+	attempt_count int4 NOT NULL,
+	CONSTRAINT pk_whatsapp_messages PRIMARY KEY (id),
+	CONSTRAINT uq_whatsapp_messages_idempotency_key UNIQUE (idempotency_key),
+	CONSTRAINT uq_whatsapp_messages_meta_message_id UNIQUE (meta_message_id),
+	CONSTRAINT fk_whatsapp_messages_contact_id_contacts FOREIGN KEY (contact_id) REFERENCES public.contacts(id) ON DELETE SET NULL,
+	CONSTRAINT fk_whatsapp_messages_conversation_id_conversations FOREIGN KEY (conversation_id) REFERENCES public.conversations(id) ON DELETE SET NULL
+);
+CREATE INDEX ix_whatsapp_messages_contact_id ON public.whatsapp_messages USING btree (contact_id);
+CREATE INDEX ix_whatsapp_messages_conversation_id ON public.whatsapp_messages USING btree (conversation_id);
+CREATE INDEX ix_whatsapp_messages_received_at ON public.whatsapp_messages USING btree (received_at);
