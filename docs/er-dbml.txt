@@ -276,3 +276,77 @@ CREATE TABLE public.whatsapp_messages (
 CREATE INDEX ix_whatsapp_messages_contact_id ON public.whatsapp_messages USING btree (contact_id);
 CREATE INDEX ix_whatsapp_messages_conversation_id ON public.whatsapp_messages USING btree (conversation_id);
 CREATE INDEX ix_whatsapp_messages_received_at ON public.whatsapp_messages USING btree (received_at);
+
+
+-- public.grievances definition
+
+-- Drop table
+
+-- DROP TABLE public.grievances;
+
+CREATE TABLE public.grievances (
+	id uuid NOT NULL,
+	human_id varchar(32) NOT NULL,
+	contact_id uuid NOT NULL,
+	conversation_id uuid NULL,
+	location_latitude float8 NULL,
+	location_longitude float8 NULL,
+	location_address text NULL,
+	issue_text text NULL,
+	photo_media_id varchar(255) NULL,
+	status varchar(32) NOT NULL,
+	created_at timestamptz NOT NULL,
+	updated_at timestamptz NOT NULL,
+	user_id uuid NULL,
+	"source" varchar(16) NOT NULL,
+	issue_messages jsonb NOT NULL,
+	source_language varchar(16) NULL,
+	photo_path text NULL,
+	audio_paths jsonb NOT NULL,
+	pdf_path text NULL,
+	category varchar(64) NULL,
+	department_key varchar(64) NULL,
+	priority varchar(16) NULL,
+	term varchar(16) NULL,
+	confidence float8 NULL,
+	image_match_status varchar(16) NULL,
+	flags jsonb NOT NULL,
+	report_count int4 NOT NULL,
+	duplicate_of_id uuid NULL,
+	window_expires_at timestamptz NULL,
+	dispatch_ref varchar(255) NULL,
+	dispatch_attempts int4 NOT NULL,
+	drafted_at timestamptz NULL,
+	confirmed_at timestamptz NULL,
+	taxonomy_version varchar(32) NULL,
+	category_id varchar(96) NULL,
+	aggregation_key varchar(96) NULL,
+	jurisdiction_id varchar(64) NULL,
+	safety_level varchar(16) NULL,
+	asset_scope varchar(16) NULL,
+	disposition varchar(40) NULL,
+	review_status varchar(32) NULL,
+	policy_version varchar(32) NULL,
+	routing_snapshot jsonb NULL,
+	structured_facts jsonb NULL,
+	transcript_metadata jsonb DEFAULT '[]'::jsonb NOT NULL,
+	state_version int4 DEFAULT 0 NOT NULL,
+	CONSTRAINT pk_grievances PRIMARY KEY (id),
+	CONSTRAINT uq_grievances_conversation_id UNIQUE (conversation_id),
+	CONSTRAINT uq_grievances_human_id UNIQUE (human_id),
+	CONSTRAINT fk_grievances_contact_id_contacts FOREIGN KEY (contact_id) REFERENCES public.contacts(id) ON DELETE CASCADE,
+	CONSTRAINT fk_grievances_conversation_id_conversations FOREIGN KEY (conversation_id) REFERENCES public.conversations(id) ON DELETE SET NULL,
+	CONSTRAINT fk_grievances_duplicate_of_id_grievances FOREIGN KEY (duplicate_of_id) REFERENCES public.grievances(id) ON DELETE SET NULL,
+	CONSTRAINT fk_grievances_user_id_users FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE SET NULL
+);
+CREATE INDEX ix_grievances_aggregation_key ON public.grievances USING btree (aggregation_key);
+CREATE INDEX ix_grievances_category_id ON public.grievances USING btree (category_id);
+CREATE INDEX ix_grievances_category_window ON public.grievances USING btree (category, window_expires_at);
+CREATE INDEX ix_grievances_contact_id ON public.grievances USING btree (contact_id);
+CREATE INDEX ix_grievances_created_at ON public.grievances USING btree (created_at);
+CREATE INDEX ix_grievances_duplicate_of_id ON public.grievances USING btree (duplicate_of_id);
+CREATE INDEX ix_grievances_jurisdiction_id ON public.grievances USING btree (jurisdiction_id);
+CREATE INDEX ix_grievances_lat_lon ON public.grievances USING btree (location_latitude, location_longitude);
+CREATE INDEX ix_grievances_review_status ON public.grievances USING btree (review_status);
+CREATE INDEX ix_grievances_status ON public.grievances USING btree (status);
+CREATE INDEX ix_grievances_user_id ON public.grievances USING btree (user_id);
