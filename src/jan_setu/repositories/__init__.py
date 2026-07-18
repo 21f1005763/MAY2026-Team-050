@@ -4,6 +4,12 @@ import X`` regardless of which submodule ``X`` actually lives in.
 """
 
 from jan_setu.repositories.contacts import get_contact, list_contacts, upsert_contact
+from jan_setu.repositories.conversations import (
+    annotate_consumption,
+    claim_inbound,
+    lock_contact_and_get_conversation,
+    upsert_conversation_state,
+)
 from jan_setu.repositories.messages import (
     StoredIncomingMessage,
     claim_outbound,
@@ -23,13 +29,16 @@ from jan_setu.repositories.webhook_events import (
 
 __all__ = [
     "StoredIncomingMessage",
+    "annotate_consumption",
     "claim_event",
+    "claim_inbound",
     "claim_outbound",
     "fetch_sweepable_outbound",
     "fetch_unprocessed_event_ids",
     "get_contact",
     "list_contacts",
     "list_messages",
+    "lock_contact_and_get_conversation",
     "mark_event_processed",
     "mark_outbound",
     "store_incoming_messages",
@@ -37,4 +46,5 @@ __all__ = [
     "store_outgoing_pending",
     "store_webhook_event",
     "upsert_contact",
+    "upsert_conversation_state",
 ]

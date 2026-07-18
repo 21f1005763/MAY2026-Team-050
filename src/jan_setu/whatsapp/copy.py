@@ -1,0 +1,156 @@
+"""Bilingual (Hindi + English) message copy for the conversation engine.
+
+All citizen-facing strings live here so wording and translations are reviewed in
+one place. WhatsApp limits: interactive body text <= 1024 chars, reply button
+title <= 20 chars (so the bilingual titles below stay short).
+"""
+
+# Stable reply-button IDs. Branch on these, never on the displayed title text.
+CONFIRM_YES_ID = "loc_confirm_yes"
+CONFIRM_NO_ID = "loc_confirm_no"
+
+GREETING = (
+    "नमस्ते! जन सेतु में आपका स्वागत है। आपकी शिकायत दर्ज करने के लिए हमें आपका "
+    "स्थान चाहिए।\n\n"
+    "Hello! Welcome to Jan Setu. To register your grievance we need your location."
+)
+
+# Body shown alongside the native "Send location" button.
+LOCATION_REQUEST = (
+    "कृपया नीचे दिए गए बटन से अपना वर्तमान स्थान साझा करें।\n\n"
+    "Please share your current location using the button below."
+)
+
+# Sent when we expected a location but got something else.
+LOCATION_REPROMPT = (
+    "हम आपके सटीक स्थान के बिना आगे नहीं बढ़ सकते। कृपया बटन से अपना स्थान साझा करें।\n\n"
+    "We cannot proceed without your exact location. Please share it using the button."
+)
+
+# Buttons (titles must be <= 20 characters).
+CONFIRM_YES_TITLE = "हाँ / Yes"
+CONFIRM_NO_TITLE = "नहीं / No"
+
+# Body for the Yes/No confirmation. Format with the resolved address (or raw
+# coordinates when geocoding failed).
+CONFIRM_LOCATION = (
+    "क्या यह आपका वर्तमान स्थान है?\n{address}\n\nIs this your current location?\n{address}"
+)
+
+# Shown when geocoding fails — we still confirm using raw coordinates.
+RAW_COORDINATES = "अक्षांश/Lat {lat:.5f}, देशांतर/Lon {lon:.5f}"
+
+# Entry point of the next slice (issue capture). Sent on confirmed location.
+ASK_ISSUE = (
+    "धन्यवाद! अब कृपया अपनी समस्या बताएं — आप टेक्स्ट या वॉइस मैसेज भेज सकते हैं।\n\n"
+    "Thank you! Now please describe your issue — you can send a text or a voice message."
+)
+
+# --- Issue capture (Slice 2) ---------------------------------------------------
+
+# "Done" button shown with ASK_ISSUE. The citizen may send several text/voice
+# messages, then taps Done to finish.
+ISSUE_DONE_ID = "issue_done"
+ISSUE_DONE_TITLE = "हो गया / Done"
+
+# Sent if the user taps Done before describing anything — guards empty tickets.
+ISSUE_EMPTY = (
+    "कृपया पहले अपनी समस्या बताएं, फिर 'हो गया' दबाएं।\n\n"
+    "Please describe your issue first, then tap 'Done'."
+)
+
+# Acknowledgement merged into the photo prompt (one message to keep order).
+ISSUE_RECEIVED = "हमें आपके संदेश मिल गए हैं।\n\nWe have received your messages."
+
+# Photo prompt with two buttons. Camera-only capture needs WhatsApp Flows +
+# business verification (out of scope), so we request a live photo but cannot
+# enforce the camera.
+PHOTO_PROMPT = (
+    "क्या आप घटना की एक लाइव फ़ोटो साझा करना चाहते हैं ताकि अधिकारी उसे आसानी से "
+    "पहचान सकें?\n\n"
+    "Would you like to share a live photo of the incident so authorities can "
+    "identify it easily?"
+)
+PHOTO_SHARE_ID = "photo_share"
+PHOTO_SHARE_TITLE = "फ़ोटो भेजें/Photo"
+PHOTO_SKIP_ID = "photo_skip"
+PHOTO_SKIP_TITLE = "नहीं / Skip"
+
+# Sent after the user taps "share a photo": ask them to take a live photo now.
+PHOTO_INSTRUCTION = (
+    "कृपया अभी घटना की एक लाइव फ़ोटो लें और भेजें।\n\n"
+    "Please take a live photo of the incident now and send it."
+)
+
+# Final registration confirmation. Format with the human-readable grievance id.
+REGISTERED = (
+    "आपकी शिकायत जन सेतु में दर्ज हो गई है।\nपंजीकरण क्रमांक: {grievance_id}\n"
+    "हम आपको पुष्टिकरण रिपोर्ट भेजेंगे।\n\n"
+    "Your complaint is registered with Jan Setu.\nReference ID: {grievance_id}\n"
+    "We will send you a confirmation report."
+)
+
+# --- Processing pipeline (STT + classification + image check + PDF confirm) ---
+
+PROCESSING_WAIT = (
+    "धन्यवाद! हम आपकी शिकायत की जांच कर रहे हैं। कृपया कुछ पल प्रतीक्षा करें।\n\n"
+    "Thank you! We are processing your complaint. Please wait a moment."
+)
+
+STILL_PROCESSING = (
+    "हम अभी भी आपकी शिकायत की जांच कर रहे हैं। कृपया प्रतीक्षा करें।\n\n"
+    "We are still processing your complaint. Please wait."
+)
+
+# Sent alongside the generated PDF document, with Confirm/Cancel buttons.
+PDF_CONFIRM = (
+    "कृपया नीचे दी गई शिकायत का विवरण जांचें। पुष्टि करने पर यह संबंधित विभाग को भेज दी "
+    "जाएगी।\n\n"
+    "Please verify your complaint details below. Confirming will send it to the "
+    "concerned department.\n\n{summary}"
+)
+CONFIRM_GRV_YES_TITLE = "पुष्टि करें/Confirm"
+CONFIRM_GRV_NO_TITLE = "रद्द करें/Cancel"
+
+# Sent when the LLM image-match check flags the photo as not matching the text.
+IMAGE_MISMATCH_PROMPT = (
+    "लगता है कि भेजी गई फ़ोटो आपके विवरण से मेल नहीं खाती। कृपया एक और फ़ोटो भेजें, या "
+    "बिना फ़ोटो के आगे बढ़ें।{note}\n\n"
+    "The photo doesn't seem to match your description. Please send another photo, "
+    "or continue without one.{note}"
+)
+PHOTO_CONTINUE_TITLE = "जारी रखें/Continue"
+
+REGISTERED_FINAL = (
+    "आपकी शिकायत जन सेतु में दर्ज हो गई है।\nपंजीकरण क्रमांक: {grievance_id}\n\n"
+    "Your complaint is registered with Jan Setu.\nReference ID: {grievance_id}"
+)
+
+DUPLICATE_NOTE = (
+    "\n\n{count} अन्य लोगों ने भी यही समस्या दर्ज की है।\n\n"
+    "{count} other people have also reported this issue."
+)
+
+CANCELLED = (
+    "आपकी शिकायत रद्द कर दी गई है। आप कभी भी नई शिकायत दर्ज कर सकते हैं।\n\n"
+    "Your complaint has been cancelled. You may start a new one anytime."
+)
+
+# --- Status query ("status") -------------------------------------------------
+
+STATUS_HEADER = "आपकी हाल की शिकायतें:\n\nYour recent complaints:"
+STATUS_LINE = "\n{human_id} — {category} — {status}"
+STATUS_EMPTY = "आपकी कोई दर्ज शिकायत नहीं मिली।\n\nWe couldn't find any complaints registered by you."
+
+# --- Reverse-OTP verification -------------------------------------------------
+
+VERIFY_SUCCESS = (
+    "सत्यापन सफल! अब आप जन सेतु वेब ऐप में लॉग इन कर सकते हैं।\n\n"
+    "Verification successful! You can now log in to the Jan Setu web app."
+)
+VERIFY_INVALID = (
+    "यह सत्यापन कोड मान्य नहीं है या समाप्त हो गया है। कृपया वेब ऐप से एक नया कोड प्राप्त "
+    "करें।\n\n"
+    "This verification code is invalid or has expired. Please request a new one "
+    "from the web app."
+)

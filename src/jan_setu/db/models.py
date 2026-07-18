@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Any
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from jan_setu.db.session import Base, utc_now
@@ -67,6 +67,51 @@ class WhatsAppMessage(TimestampMixin, Base):
     attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     contact: Mapped[Contact | None] = relationship(back_populates="messages")
+
+class Conversation(TimestampMixin, Base):
+    """One guided dialog with a contact. At most one is ``active`` per contact
+    (enforced by a partial unique index)."""
+
+    __tablename__ = "conversations"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    contact_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("contacts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    state: Mapped[str] = mapped_column(String(32), nullable=False)
+    context: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    state_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    active: Mapped[bool] = mapped_column(nullable=False, default=True)
+    last_user_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    service_window_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index(
+            "uq_conversations_active_contact",
+            "contact_id",
+            unique=True,
+            postgresql_where=text("active"),
+        ),
+    )
+
+class FsmMessageConsumption(Base):
+    """Idempotency gate + transition log: one row per inbound message the FSM has
+    consumed. A replayed inbound collides on ``inbound_message_id`` and is skipped."""
+
+    __tablename__ = "fsm_message_consumptions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    inbound_message_id: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    conversation_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("conversations.id", ondelete="SET NULL"), index=True
+    )
+    state_before: Mapped[str | None] = mapped_column(String(32))
+    state_after: Mapped[str | None] = mapped_column(String(32))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 class WebhookEvent(Base):
     __tablename__ = "webhook_events"

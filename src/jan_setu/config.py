@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     auto_reply_enabled: bool = False
     worker_poll_seconds: float = 2.0
     worker_batch_size: int = 10
+    # Conversation engine. service_window_hours is Meta's 24h customer-service
+    # window (free-form sends only inside it); conversation_ttl_hours is how long
+    # an unfinished chat may be resumed before it is expired and restarted.
+    conversation_ttl_hours: int = 168
+    service_window_hours: int = 24
     # Web frontend.
     cors_origins: str = "http://localhost:5173"
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
