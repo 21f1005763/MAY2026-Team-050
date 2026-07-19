@@ -152,3 +152,72 @@ JAN-SETU FEATURES
 
 • Fast handling for priority cases
   Priority complaints do not wait in the routine grouping window. They move toward immediate dispatch or official review.
+
+
+======================================================================
+PROBLEM 8: Citizens cannot see what happened after filing
+======================================================================
+
+After filing through a traditional channel, people often do not know whether the complaint was received, assigned, being worked on, or closed. This leads to repeated calls and office visits.
+
+JAN-SETU FEATURES
+
+• Complaint receipt and ticket ID
+  After confirmation, the citizen receives a clear complaint reference number.
+
+• Personal dashboard
+  Signed-in citizens can see their recent complaints in one place.
+
+• Complaint detail page
+  Each complaint has its own page showing its category, date, current status, and status history.
+
+• Plain status labels
+  The platform uses understandable stages such as processing, awaiting review, submitted, grouped with a similar report, or completed.
+
+• Status by WhatsApp
+  The WhatsApp flow recognises simple status requests, including “status” and “स्थिति”, and can return the current update without requiring the web app.
+
+
+======================================================================
+PROBLEM 9: Citizens and officials need a trustworthy process
+======================================================================
+
+People need confidence that their complaint was received and handled fairly. Officials also need enough information to make accountable decisions.
+
+JAN-SETU FEATURES
+
+• Confirmation before final filing
+  Citizens review and confirm the complaint before it enters the handling process.
+
+• Complaint summary document
+  The system prepares a complaint summary document containing the issue, location, category, department, priority, and supporting details.
+
+• Action history
+  Important status changes and official actions are recorded as part of the complaint history.
+
+• Reasoned official decisions
+  Officials provide a short decision note when approving, redirecting, rejecting, or requesting clarification.
+
+• Reliable handling when services fail
+  If speech conversion, location lookup, or automatic classification is temporarily unavailable, the complaint is flagged for review rather than being discarded.
+
+
+======================================================================
+WHAT JAN-SETU MAKES EASIER
+======================================================================
+
+For citizens:
+• Report local problems without beginning with an office visit.
+• Use a phone, location, voice, text, and photos.
+• Avoid needing to understand department structures.
+• Receive a ticket number and track progress.
+• Use a clearer and more accessible complaint process.
+
+For government officials:
+• Receive more complete complaint information.
+• Spend less time sorting routine complaints manually.
+• See priority, uncertain, and safety-related cases clearly.
+• Reduce duplicate reports for the same local problem.
+• Keep a recorded history of complaint decisions and actions.
+
+In short, Jan-Setu connects citizens and government teams through a simpler, more structured, and more visible way to report and manage civic problems.
