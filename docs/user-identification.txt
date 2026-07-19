@@ -184,3 +184,42 @@ What they need from Jan-Setu:
 • Clear status updates.
 • Less manual coordination and fewer repeated phone calls.
 • A visible history of what was reported and what happened next.
+
+
+======================================================================
+4. SHARED USER NEEDS
+======================================================================
+
+Citizens need:
+• A simple and familiar way to report problems.
+• Support for local languages and different levels of digital confidence.
+• Location, voice, text, and photo options.
+• Clear confirmation that a complaint was received.
+• Easy complaint tracking without repeated office visits or calls.
+
+Government officials need:
+• Complete and structured complaint information.
+• Faster sorting and routing of cases.
+• Clear identification of urgent, uncertain, or duplicate reports.
+• Human control over important decisions.
+• A record of complaint handling and official actions.
+
+Field and institutional staff need:
+• Faster access to relevant cases.
+• Better information before responding.
+• Less dependence on manual forwarding and unclear follow-up.
+
+
+======================================================================
+5. HOW JAN-SETU SERVES ALL USER GROUPS
+======================================================================
+
+Jan-Setu acts as a bridge between citizens and public-service teams.
+
+For citizens, it makes civic complaint filing easier, more accessible, and easier to track.
+
+For officials, it turns incoming reports into clearer, more organised cases that can be reviewed and routed with less manual effort.
+
+For field teams and institutions, it improves the flow of information so the right people can respond with better context and fewer delays.
+
+The common goal is a complaint process that is more structured, accessible, transparent, and fair for everyone involved.
