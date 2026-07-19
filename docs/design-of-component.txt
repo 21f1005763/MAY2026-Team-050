@@ -1,0 +1,19 @@
+JAN SETU — DESIGN OF COMPONENTS
+
+Designed & Authored By: Tushar Sharma
+
+======================================================================
+1. SYSTEM OVERVIEW
+======================================================================
+
+Jan Setu is a civic complaint platform. Citizens can submit complaints through a React web portal or WhatsApp. Both channels use the same FastAPI backend, PostgreSQL database, and complaint-processing pipeline.
+
+The platform:
+• Validates complaint information.
+• Accepts text, voice notes, location, and optional photos.
+• Converts voice notes to text.
+• Classifies, prioritises, and routes complaints.
+• Checks whether an optional photo matches the complaint description.
+• Groups similar routine complaints.
+• Dispatches complaints to available department adapters.
+• Stores complaint history for citizens and officials.
