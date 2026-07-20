@@ -104,6 +104,12 @@ export interface GrievanceSummary {
   created_at: string;
 }
 
+export interface GrievanceEvent {
+  status: string;
+  note: string | null;
+  created_at: string;
+}
+
 export interface TranscriptionPreview {
   text?: string | null;
   language?: string | null;
@@ -118,3 +124,29 @@ export interface Transcript {
   mime_type?: string;
 }
 
+export interface GrievanceDetail extends GrievanceSummary {
+  address: string | null;
+  issue_text: string | null;
+  department_key: string | null;
+  department_name: string | null;
+  term: string | null;
+  confidence: number | null;
+  image_match_status: ImageMatchStatus | null;
+  flags: string[];
+  report_count: number;
+  dispatch_ref: string | null;
+  events: GrievanceEvent[];
+  pdf_url: string | null;
+  category_id?: string | null;
+  category_label?: string | null;
+  domain_label?: string | null;
+  safety_level?: "none" | "possible" | "immediate" | null;
+  asset_scope?: "public" | "private" | "unknown" | null;
+  disposition?: string | null;
+  review_status?: string | null;
+  source_language?: string | null;
+  transcript_metadata: Transcript[];
+  voice_note_urls: string[];
+  structured_facts?: GrievanceDraftResponse["structured_facts"];
+  routing?: GrievanceDraftResponse["routing"];
+}

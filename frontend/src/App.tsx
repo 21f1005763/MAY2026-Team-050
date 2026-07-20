@@ -7,6 +7,7 @@ import About from "./pages/About";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import NewComplaint from "./pages/NewComplaint";
+import ComplaintDetail from "./pages/ComplaintDetail";
 import AuthenticatedShell from "./components/AuthenticatedShell";
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -53,6 +54,14 @@ export default function App() {
         element={
           <RequireAuth>
             <NewComplaint />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/complaints/:id"
+        element={
+          <RequireAuth>
+            <ComplaintDetail />
           </RequireAuth>
         }
       />
