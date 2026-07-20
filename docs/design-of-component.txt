@@ -17,3 +17,49 @@ The platform:
 • Groups similar routine complaints.
 • Dispatches complaints to available department adapters.
 • Stores complaint history for citizens and officials.
+
+
+======================================================================
+2. MAIN COMPONENTS
+======================================================================
+
+2.1 Citizen Web Portal
+
+Technology: React, TypeScript, Vite
+
+Purpose:
+• Provides public pages, citizen sign-in, complaint filing, complaint tracking, and language selection.
+
+Key components:
+• Login and Auth Context — WhatsApp-linked reverse-OTP sign-in and session restoration.
+• Filing Wizard — Four steps: location, issue details, photo evidence, and review.
+• Location Picker — Lets citizens choose a location using a map, GPS, or map movement.
+• Voice Recorder — Records audio complaints and provides transcript preview.
+• Photo Upload — Lets citizens attach optional image evidence.
+• Review Card — Shows processed complaint details before confirmation.
+• Dashboard — Lists citizen complaints and current statuses.
+• Complaint Detail and Timeline — Shows complaint history, updates, and available receipt.
+• Language Picker and I18n Context — Supports English, Hindi, Bengali, Marathi, Telugu, and Tamil.
+
+Supports: US-01, US-02, US-03, US-04, US-05, US-08, US-10.
+
+
+2.2 WhatsApp Complaint Interface
+
+Technology: Meta WhatsApp Cloud API
+
+Purpose:
+• Gives citizens a familiar, guided alternative to the web portal.
+
+Key components:
+• Webhook — Receives and verifies incoming WhatsApp events.
+• WhatsApp Client — Sends text, interactive buttons, location prompts, and documents.
+• Conversation Engine — Guides citizens through location, issue description, optional photo, and confirmation.
+• Conversation Processor — Stores and processes inbound and outbound messages reliably.
+
+Key behaviour:
+• Citizens can share a location, send text or voice messages, attach a photo, and confirm a complaint.
+• A standalone `status` or `स्थिति` message returns recent complaint status information.
+• Conversation state is stored so that the process can recover after interruptions.
+
+Supports: US-01, US-02, US-03, US-09, US-10.
