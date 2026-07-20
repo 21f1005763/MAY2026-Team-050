@@ -41,3 +41,46 @@ class SendTextRequest(BaseModel):
 class SendTextResponse(BaseModel):
     provider_response: dict[str, Any]
     stored_message: MessageRead
+
+class GrievanceEventRead(BaseModel):
+    status: str
+    note: str | None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class GrievanceSummary(BaseModel):
+    id: UUID
+    human_id: str
+    category: str | None
+    status: str
+    priority: str | None
+    source: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class GrievanceDetail(GrievanceSummary):
+    address: str | None
+    issue_text: str | None
+    department_key: str | None
+    department_name: str | None
+    term: str | None
+    confidence: float | None
+    image_match_status: str | None
+    flags: list[Any]
+    report_count: int
+    dispatch_ref: str | None
+    events: list[GrievanceEventRead]
+    pdf_url: str | None
+    category_id: str | None = None
+    category_label: str | None = None
+    domain_label: str | None = None
+    safety_level: str | None = None
+    asset_scope: str | None = None
+    disposition: str | None = None
+    review_status: str | None = None
+    source_language: str | None = None
+    transcript_metadata: list[dict[str, Any]] = Field(default_factory=list)
+    structured_facts: dict[str, Any] | None = None
+    routing: dict[str, Any] | None = None

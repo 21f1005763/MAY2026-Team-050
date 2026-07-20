@@ -113,6 +113,114 @@ class FsmMessageConsumption(Base):
     state_after: Mapped[str | None] = mapped_column(String(32))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
+class Grievance(TimestampMixin, Base):
+    """A registered citizen complaint. At most one per conversation (the unique
+    ``conversation_id`` makes WhatsApp registration idempotent; web-sourced
+    grievances have ``conversation_id is None``). ``human_id`` is the
+    citizen-facing ticket number (e.g. ``JS-20260625-00001``) from a Postgres
+    sequence; the UUID ``id`` is the internal key.
+
+    ``status`` lifecycle: draft -> processing -> awaiting_confirmation ->
+    registered -> (dispatching -> submitted) | pending_window -> dispatching ->
+    submitted | duplicate | cancelled | dispatch_failed. Every transition is
+    also appended to ``grievance_events`` for the audit timeline.
+    """
+
+    __tablename__ = "grievances"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    human_id: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
+    contact_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("contacts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    conversation_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("conversations.id", ondelete="SET NULL"), unique=True
+    )
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="whatsapp")
+
+    location_latitude: Mapped[float | None] = mapped_column(Float)
+    location_longitude: Mapped[float | None] = mapped_column(Float)
+    location_address: Mapped[str | None] = mapped_column(Text)
+
+    # Raw accumulated issue messages from the FSM context (id/type/text/media_id/
+    # mime_type per message) — the pipeline's transcribe+combine stage reads this
+    # directly rather than re-joining whatsapp_messages.
+    issue_messages: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
+    issue_text: Mapped[str | None] = mapped_column(
+        Text
+    )  # combined typed text + original-language STT
+    source_language: Mapped[str | None] = mapped_column(String(16))
+    photo_media_id: Mapped[str | None] = mapped_column(String(255))
+    photo_path: Mapped[str | None] = mapped_column(Text)
+    audio_paths: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
+    pdf_path: Mapped[str | None] = mapped_column(Text)
+
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft")
+    category: Mapped[str | None] = mapped_column(String(64))
+    department_key: Mapped[str | None] = mapped_column(String(64))
+    priority: Mapped[str | None] = mapped_column(String(16))
+    term: Mapped[str | None] = mapped_column(String(16))
+    confidence: Mapped[float | None] = mapped_column(Float)
+    image_match_status: Mapped[str | None] = mapped_column(String(16))
+    flags: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
+
+    report_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    duplicate_of_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("grievances.id", ondelete="SET NULL"), index=True
+    )
+    window_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    dispatch_ref: Mapped[str | None] = mapped_column(String(255))
+    dispatch_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    drafted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    # v2 intelligence/routing fields are additive during the compatibility rollout.
+    taxonomy_version: Mapped[str | None] = mapped_column(String(32))
+    category_id: Mapped[str | None] = mapped_column(String(96), index=True)
+    aggregation_key: Mapped[str | None] = mapped_column(String(96), index=True)
+    jurisdiction_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    safety_level: Mapped[str | None] = mapped_column(String(16))
+    asset_scope: Mapped[str | None] = mapped_column(String(16))
+    disposition: Mapped[str | None] = mapped_column(String(40))
+    review_status: Mapped[str | None] = mapped_column(String(32), index=True)
+    policy_version: Mapped[str | None] = mapped_column(String(32))
+    routing_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    structured_facts: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    transcript_metadata: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
+    state_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    __table_args__ = (
+        Index("ix_grievances_status", "status"),
+        Index("ix_grievances_created_at", "created_at"),
+        Index("ix_grievances_category_window", "category", "window_expires_at"),
+        Index("ix_grievances_lat_lon", "location_latitude", "location_longitude"),
+    )
+
+class GrievanceEvent(Base):
+    """Append-only status-history audit trail for one grievance. Drives both the
+    web complaint-detail timeline and the WhatsApp ``status`` reply."""
+
+    __tablename__ = "grievance_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    grievance_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("grievances.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    note: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
 class WebhookEvent(Base):
     __tablename__ = "webhook_events"
 
