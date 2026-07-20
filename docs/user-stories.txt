@@ -185,3 +185,56 @@ Department receives complaint within 5 minutes of citizen submission.
 Acceptance Criteria:
 • Priority complaints bypass aggregation and are forwarded within 5 minutes of classification.
 • Citizen receives immediate acknowledgment confirming the complaint is fast-tracked.
+
+
+======================================================================
+3.8 COMPLAINT STATUS TRACKING ON WEB APP
+======================================================================
+
+As Teena Khanna, I want to view my complaint's live status on the Jan-Setu web app, so that I don't need to call or visit anyone for an update.
+
+Specific:
+Web app displays complaint lifecycle: Drafted → Submitted → Processing → Completed.
+
+Measurable:
+Status updated within 24 hrs of any official action; user notified on every change.
+
+Actionable:
+Status-tracking backend synced with the Jan-Setu complaint pipeline.
+
+Relevant:
+Eliminates post-submission invisibility — P3.
+
+Time-bound:
+Status updated within 24 hours; 7-day inactivity triggers an escalation flag.
+
+Acceptance Criteria:
+• Status updated within 24 hours of any department action.
+• User receives a notification on every status change.
+• No status change for 7 days triggers an automatic escalation flag.
+
+
+======================================================================
+3.9 STATUS REQUEST VIA JAN-SETU WHATSAPP BOT
+======================================================================
+
+As Pintu Yadav, I want to check my complaint status by messaging the Jan-Setu bot in Hindi, so that I get an update without opening the web app.
+
+Specific:
+WhatsApp bot returns current complaint status on user request.
+
+Measurable:
+Status returned within 30 seconds of the user's message.
+
+Actionable:
+WhatsApp Business API + backend status query from Jan-Setu database.
+
+Relevant:
+Extends status visibility to non-web-app users — P3.
+
+Time-bound:
+Response delivered within 30 seconds.
+
+Acceptance Criteria:
+• Bot returns current complaint status within 30 seconds in plain Hindi.
+• Resolved complaints include a brief summary of action taken.
