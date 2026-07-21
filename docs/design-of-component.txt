@@ -63,3 +63,45 @@ Key behaviour:
 • Conversation state is stored so that the process can recover after interruptions.
 
 Supports: US-01, US-02, US-03, US-09, US-10.
+
+
+2.3 FastAPI Application Server
+
+Technology: FastAPI, Uvicorn
+
+Purpose:
+• Acts as the central backend for both citizen channels and the official portal.
+
+Responsibilities:
+• Receives web, WhatsApp, and official portal requests.
+• Manages authentication and API access.
+• Creates and updates complaint records.
+• Stores WhatsApp events before background processing.
+• Serves citizen and official complaint information.
+• Connects the interfaces to the database and processing pipeline.
+
+Main API groups:
+• WhatsApp webhook: `GET/POST /whatsapp/webhook`
+• Citizen authentication: `/auth/request-code`, `/auth/status`, `/auth/refresh`, `/auth/logout`
+• Citizen complaints: `/api/grievances`
+• Official portal: official login, queue, detail, and action routes.
+
+Supports: US-01 to US-10.
+
+
+2.4 Authentication Module
+
+Purpose:
+• Provides secure citizen and official access.
+
+Citizen authentication:
+• Uses a WhatsApp-linked, reverse-OTP login flow.
+• Access token stays in browser memory.
+• Refresh token is stored as a protected httpOnly cookie.
+• Verification code has a limited lifetime.
+
+Official authentication:
+• Uses official login with department-scoped access.
+• Restricts officials to complaints relevant to their jurisdiction.
+
+Supports: US-01 and official review activities.
