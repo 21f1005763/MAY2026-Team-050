@@ -146,3 +146,32 @@ export function apiPostEmpty<T>(path: string, options?: RequestOptions): Promise
   return request<T>(path, { ...options, method: "POST" });
 }
 
+/**
+ * Fetches a binary resource (e.g. a grievance PDF) with the Authorization header
+ * attached, since plain <a href> downloads cannot carry custom headers.
+ * Triggers a browser download via a temporary object-URL anchor.
+ */
+export async function downloadWithAuth(path: string, filename: string): Promise<void> {
+  const url = /^https?:\/\//i.test(path) ? path : `${API_BASE}${path}`;
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      credentials: "include",
+      headers: buildHeaders(undefined, true),
+    });
+  } catch {
+    throw new ApiError(0, "We couldn’t download the receipt. Check your connection and try again.");
+  }
+  if (!response.ok) {
+    throw new ApiError(response.status, response.statusText || `Request failed with status ${response.status}`);
+  }
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(objectUrl);
+}

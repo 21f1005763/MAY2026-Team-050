@@ -1,7 +1,8 @@
 import { fill } from "../lib/text";
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { apiGet } from "../api/client";
+import { apiGet, downloadWithAuth, ApiError } from "../api/client";
 import type { GrievanceDetail } from "../api/types";
 import StatusChip, { metaForStatus } from "../components/StatusChip";
 import StatusTimeline from "../components/StatusTimeline";
@@ -15,7 +16,16 @@ function languageLabel(language: string) {
 export default function ComplaintDetail() {
   const bcp47 = "en-IN";
   const { id } = useParams<{ id?: string }>();
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
   const query = useQuery({ queryKey: ["grievance", id], queryFn: () => apiGet<GrievanceDetail>(`/api/grievances/${id}`), enabled: Boolean(id) });
+  const download = async () => {
+    if (!query.data?.pdf_url) return;
+    setDownloadError(null); setDownloading(true);
+    try { await downloadWithAuth(query.data.pdf_url, `${query.data.human_id}.pdf`); }
+    catch (error) { setDownloadError(error instanceof ApiError ? error.message : "Could not download the receipt. Please try again."); }
+    finally { setDownloading(false); }
+  };
 
   if (query.isLoading) return <div className="app-page detail-loading" role="status" aria-live="polite" aria-busy="true" aria-label={"Loading complaint"}><div className="detail-loading__header" /><div className="detail-loading__grid"><span /><span /></div></div>;
   if (query.isError) return <div className="app-page"><div className="app-notice app-notice--warning" role="alert"><strong>{"We couldn’t open this complaint."}</strong><span>{"Check your connection, then try again. Your complaint remains safely filed."}</span><button type="button" onClick={() => query.refetch()}>{"Try again"}</button></div></div>;
@@ -47,6 +57,6 @@ export default function ComplaintDetail() {
       {facts?.requested_action && <div className="is-wide"><dt>{"Requested action"}</dt><dd>{facts.requested_action}</dd></div>}
       {facts?.landmark && <div><dt>{"Reported landmark"}</dt><dd>{facts.landmark}</dd></div>}
       {grievance.routing?.sla_hours != null && <div><dt>{"Expected handling target"}</dt><dd>{fill("{count} hours", { count: grievance.routing.sla_hours })}</dd></div>}
-    </dl>{grievance.report_count > 1 && <p className="detail-reports">{fill("{count} citizens have reported this issue. Grouping nearby reports gives the department one clearer case to act on.", { count: grievance.report_count })}</p>}</article><aside className="detail-history"><h2>{"Status history"}</h2><p>{"Each update is recorded here."}</p><StatusTimeline events={grievance.events} /></aside></div>
+    </dl>{grievance.report_count > 1 && <p className="detail-reports">{fill("{count} citizens have reported this issue. Grouping nearby reports gives the department one clearer case to act on.", { count: grievance.report_count })}</p>}{grievance.pdf_url && <div className="detail-download"><button type="button" className="app-button app-button--soft" onClick={download} disabled={downloading}>{downloading ? "Preparing receipt…" : "Download complaint receipt"}</button>{downloadError && <p className="app-error" role="alert">{downloadError}</p>}</div>}</article><aside className="detail-history"><h2>{"Status history"}</h2><p>{"Each update is recorded here."}</p><StatusTimeline events={grievance.events} /></aside></div>
   </div>;
 }
