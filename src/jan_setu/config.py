@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     # an unfinished chat may be resumed before it is expired and restarted.
     conversation_ttl_hours: int = 168
     service_window_hours: int = 24
+    # File uploads (voice clips, photos, generated PDFs).
+    upload_dir: str = "./data/uploads"
+    max_audio_bytes: int = 10 * 1024 * 1024
+    max_image_bytes: int = 5 * 1024 * 1024
     # Web frontend.
     cors_origins: str = "http://localhost:5173"
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
