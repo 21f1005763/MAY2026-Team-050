@@ -238,3 +238,29 @@ Response delivered within 30 seconds.
 Acceptance Criteria:
 • Bot returns current complaint status within 30 seconds in plain Hindi.
 • Resolved complaints include a brief summary of action taken.
+
+
+======================================================================
+3.10 MANDATORY STRUCTURED INTAKE ON BOTH CHANNELS
+======================================================================
+
+As Sanjay Kumar, I want all incoming complaints to arrive with validated mandatory fields, so that I can act on them the same day without chasing missing information.
+
+Specific:
+Jan-Setu enforces name, mobile number, location, and issue description on web app and WhatsApp bot.
+
+Measurable:
+Zero complaints reach the dashboard with missing mandatory fields.
+
+Actionable:
+Form validation on web app; step-by-step guided flow on WhatsApp bot.
+
+Relevant:
+Eliminates the 24–48 hr delay from incomplete complaints — P7.
+
+Time-bound:
+Validation enforced at submission; incomplete complaints cannot be forwarded.
+
+Acceptance Criteria:
+• Web app blocks submission for missing fields; user prompted in their language.
+• WhatsApp bot does not advance without a valid response for each required field.
