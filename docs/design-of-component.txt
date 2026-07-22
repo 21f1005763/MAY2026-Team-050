@@ -282,3 +282,29 @@ Stores:
 • Geocoding cache and provider rate-limit information.
 
 Supports: US-01 to US-10.
+
+
+======================================================================
+3. COMPONENT FLOW
+======================================================================
+
+WEB FLOW
+
+Citizen Web Portal
+→ FastAPI Server
+→ PostgreSQL and File Storage
+→ Shared Complaint Pipeline
+→ Classification / Geocoding / Image Check / PDF
+→ Aggregation, Dispatch, or Official Review
+→ Complaint Status Timeline
+
+WHATSAPP FLOW
+
+Citizen
+→ Meta WhatsApp Cloud API
+→ WhatsApp Webhook
+→ FastAPI Server
+→ Stored Event and Conversation State
+→ Background Worker
+→ Shared Complaint Pipeline
+→ WhatsApp Confirmation or Status Reply
