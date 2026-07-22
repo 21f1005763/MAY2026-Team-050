@@ -198,3 +198,87 @@ Behaviour:
 • Bypasses aggregation for priority complaints.
 
 Supports: US-06 and US-07.
+
+
+2.10 Background Worker
+
+Purpose:
+• Handles durable work outside normal web request processing.
+
+Responsibilities:
+• Processes stored WhatsApp events.
+• Runs and recovers complaint enrichment work.
+• Sends pending WhatsApp replies.
+• Expires aggregation windows.
+• Dispatches completed complaints.
+• Retries complaints when dispatch temporarily fails.
+
+Supports: US-02 to US-09.
+
+
+2.11 PDF and Media Services
+
+Purpose:
+• Stores citizen evidence and prepares complaint records.
+
+Media service:
+• Stores uploaded photos, audio files, and generated documents.
+
+PDF generator:
+• Creates a Unicode complaint summary containing ticket ID, issue, location, category, department, priority, and supporting details.
+• Supports web downloads and WhatsApp confirmation documents.
+
+Supports: US-02, US-04, US-08.
+
+
+2.12 Dispatch Adapters
+
+Purpose:
+• Sends confirmed complaints to a municipal destination.
+
+Implemented adapters:
+• SMTP email dispatch.
+• Mock municipal API dispatch.
+
+Behaviour:
+• Priority cases can move directly toward dispatch.
+• Routine cases can enter the aggregation window first.
+• Failed dispatches are retried and retained for recovery.
+
+Supports: US-06 and US-07.
+
+
+2.13 Official Portal
+
+Technology: React official console with FastAPI official API.
+
+Purpose:
+• Lets authorised government staff review and act on complaint cases.
+
+Key features:
+• Department-scoped complaint queue.
+• Queue metrics for visible, pending, safety, AI-unavailable, and dispatch-failed cases.
+• Complaint evidence, routing information, system flags, and history.
+• Actions to approve route, redirect, reject, or request clarification.
+• Required decision note for official actions.
+• Audit trail of official decisions.
+
+Supports: US-04, US-05, US-06, US-07.
+
+
+2.14 Data and Repository Layer
+
+Technology: PostgreSQL 16 and file storage.
+
+Purpose:
+• Provides durable storage and a clear separation between application logic and data access.
+
+Stores:
+• Citizen accounts, verification codes, and refresh tokens.
+• WhatsApp contacts, messages, conversations, and webhook events.
+• Complaints, status events, classifications, routing decisions, and dispatch records.
+• Official accounts and official action audit records.
+• Uploaded media and generated PDF summaries.
+• Geocoding cache and provider rate-limit information.
+
+Supports: US-01 to US-10.
