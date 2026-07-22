@@ -12,6 +12,17 @@ export class ApiError extends Error {
   }
 }
 
+async function readErrorMessage(response: Response): Promise<string> {
+  try {
+    const body = await response.clone().json();
+    if (typeof body?.detail === "string") return body.detail;
+    if (typeof body?.message === "string") return body.message;
+  } catch {
+    // response body wasn't JSON — fall through to status text
+  }
+  return response.statusText || `Request failed with status ${response.status}`;
+}
+
 function buildHeaders(extra?: HeadersInit, includeAuth = true): Headers {
   const headers = new Headers(extra);
   if (includeAuth) {
@@ -101,7 +112,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
 
   if (!response.ok) {
-    throw new ApiError(response.status, response.statusText || `Request failed with status ${response.status}`);
+    throw new ApiError(response.status, await readErrorMessage(response));
   }
 
   if (response.status === 204) {
@@ -163,7 +174,7 @@ export async function downloadWithAuth(path: string, filename: string): Promise<
     throw new ApiError(0, "We couldn’t download the receipt. Check your connection and try again.");
   }
   if (!response.ok) {
-    throw new ApiError(response.status, response.statusText || `Request failed with status ${response.status}`);
+    throw new ApiError(response.status, await readErrorMessage(response));
   }
   const blob = await response.blob();
   const objectUrl = URL.createObjectURL(blob);
