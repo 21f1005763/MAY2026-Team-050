@@ -331,3 +331,30 @@ Reliability:
 • Worker recovery handles interrupted processing and pending replies.
 • External provider failures are flagged instead of losing citizen complaints.
 • Dispatch failures are retained and retried.
+
+
+======================================================================
+5. STORY TRACEABILITY SUMMARY
+======================================================================
+
+US-01: Login, Auth Module, WhatsApp webhook/client, Auth Context.
+US-02: Voice Recorder, Conversation Engine, STT Service, Processing Pipeline.
+US-03: Location Picker, Geocoder, Classifier, Taxonomy.
+US-04: Photo Upload, Media Service, Image Checker, Official Console.
+US-05: Classifier, Taxonomy, Review Card, Official Console.
+US-06: Deduplication Engine, Worker, Grievance and Job Repositories.
+US-07: Taxonomy Policy, Pipeline Orchestrator, Dispatch Adapter.
+US-08: Dashboard, Complaint Detail, Status Timeline, Grievance Events.
+US-09: WhatsApp Webhook, Conversation Processor, Outbound Dispatcher.
+US-10: Filing Wizard, API Schemas, Persisted WhatsApp Conversation Flow.
+
+
+======================================================================
+6. CURRENT LIMITS AND FUTURE EXTENSIONS
+======================================================================
+
+Current implementation includes SMTP and mock municipal API dispatch for demonstration. Real department adapters can replace them later.
+
+Public Nominatim is suitable only for development traffic. A production geocoding service is required for real deployment.
+
+The system supports status retrieval and complaint timelines. Measured response-time targets, status-change push notifications, seven-day inactivity escalation, natural-language WhatsApp status understanding, and resolved-action summaries require further operational implementation or verification.
