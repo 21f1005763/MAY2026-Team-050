@@ -308,3 +308,26 @@ Citizen
 → Background Worker
 → Shared Complaint Pipeline
 → WhatsApp Confirmation or Status Reply
+
+
+======================================================================
+4. SECURITY, ACCESSIBILITY, AND RELIABILITY
+======================================================================
+
+Security:
+• WhatsApp webhooks use HMAC-SHA256 verification.
+• Webhook events are handled idempotently to prevent duplicate processing.
+• Citizen access uses reverse-OTP, memory-only access tokens, and protected refresh tokens.
+• Official actions are department-scoped and recorded in an audit trail.
+
+Accessibility and inclusion:
+• Mobile-friendly interfaces with large controls and clear guidance.
+• Keyboard access, visible focus, readable layouts, and reduced-motion support.
+• Status is not communicated through colour alone.
+• English and Hindi WhatsApp copy; six web interface languages.
+
+Reliability:
+• Incoming WhatsApp events are saved before background processing.
+• Worker recovery handles interrupted processing and pending replies.
+• External provider failures are flagged instead of losing citizen complaints.
+• Dispatch failures are retained and retried.
