@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import { AuthProvider } from "./auth/AuthContext";
+import { I18nProvider } from "./i18n/I18nContext";
 import "leaflet/dist/leaflet.css";
 import "./styles.css";
 
@@ -25,9 +26,11 @@ createRoot(rootElement).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter basename={import.meta.env.BASE_URL}>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
+        <I18nProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </I18nProvider>
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,

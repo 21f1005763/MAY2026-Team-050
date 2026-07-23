@@ -252,3 +252,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .location-picker__coordinate-fields label { color: var(--text-muted); font-size: 12px; }
 .location-picker__coordinate-fields input { width: 120px; min-height: 38px; border: 1px solid var(--js-line); border-radius: 9px; padding: 7px 8px; color: var(--js-ink); background: #fff; }
 @media (max-width:520px) { .location-picker__coordinate-fields { align-items: stretch; flex-direction: column; } .location-picker__coordinate-fields input { width: 100%; } }
+/* Six-language picker */
+.language-picker { min-height:44px; padding:8px 10px; border:1px solid var(--js-line); border-radius:var(--radius-control); background:#fff; color:var(--js-ink); font:700 12px var(--font-body); cursor:pointer; }
+.language-picker--inverse { border-color:rgba(255,255,255,.35); background:rgba(0,0,0,.18); color:#fff; }
+.language-picker--inverse option { color:var(--js-ink); background:#fff; }
