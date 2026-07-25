@@ -1,8 +1,8 @@
-import { fill } from "../lib/text";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { Transcript, TranscriptionPreview } from "../api/types";
 import { apiPostForm } from "../api/client";
 import { getAccessToken } from "../auth/AuthContext";
+import { useI18n, fill } from "../i18n/I18nContext";
 
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "";
 
@@ -44,6 +44,7 @@ function languageLabel(language: string) {
 }
 
 function RecordedClip({ clip, index, onRemove, transcript, showTranscript, sourceUrl, preview }: { clip: VoiceClip; index: number; onRemove?: () => void; transcript?: Transcript; showTranscript?: boolean; sourceUrl?: string; preview?: TranscriptionPreview }) {
+  const { t } = useI18n();
   const [url, setUrl] = useState("");
   const [duration, setDuration] = useState<number | null>(null);
 
@@ -68,21 +69,22 @@ function RecordedClip({ clip, index, onRemove, transcript, showTranscript, sourc
   return <li className="voice-recorder__item">
     <div className="voice-recorder__clip-meta">
       <span aria-hidden="true">♪</span>
-      <div><strong>{fill("Voice note {n}", { n: index + 1 })}</strong>{duration !== null && <small>{formatTime(duration)}</small>}</div>
+      <div><strong>{fill(t.voiceNoteN, { n: index + 1 })}</strong>{duration !== null && <small>{formatTime(duration)}</small>}</div>
     </div>
     <audio controls src={url || undefined} preload="metadata" onLoadedMetadata={(event) => {
       const nextDuration = event.currentTarget.duration;
       if (Number.isFinite(nextDuration)) setDuration(nextDuration);
-    }} aria-label={fill("Voice note {n}", { n: index + 1 })} />
+    }} aria-label={fill(t.voiceNoteN, { n: index + 1 })} />
     {(showTranscript || preview) && <div className="voice-recorder__transcript" aria-live="polite">
-      <strong>{"What we heard"}{(transcript?.language ?? preview?.language) && <> · {languageLabel(transcript?.language ?? preview?.language ?? "und")}</>}</strong>
-      {transcript ? <p>{transcript.text}</p> : preview?.status === "final" && preview.text ? <p>{preview.text}</p> : <p className="muted-note">{"Transcript will be prepared after you continue. You can listen to your original voice note above."}</p>}
+      <strong>{t.whatWeHeard}{(transcript?.language ?? preview?.language) && <> · {languageLabel(transcript?.language ?? preview?.language ?? "und")}</>}</strong>
+      {transcript ? <p>{transcript.text}</p> : preview?.status === "final" && preview.text ? <p>{preview.text}</p> : <p className="muted-note">{t.transcriptLater}</p>}
     </div>}
-    {onRemove && <button type="button" className="btn-link" onClick={onRemove}>{"Remove"}</button>}
+    {onRemove && <button type="button" className="btn-link" onClick={onRemove}>{t.removeClip}</button>}
   </li>;
 }
 
 export default function VoiceRecorder({ clips, onClipsChange, transcripts = [], showTranscripts = false, readOnly = false, sourceUrls = [], previewEnabled = false }: Props) {
+  const { t } = useI18n();
   const [phase, setPhase] = useState<RecorderPhase>("idle");
   const [previews, setPreviews] = useState<Record<string, TranscriptionPreview>>({});
   const previewKey = (clip: VoiceClip) => `${clip.recordingId}:${clip.segmentIndex}`;
@@ -154,7 +156,7 @@ export default function VoiceRecorder({ clips, onClipsChange, transcripts = [], 
     };
     recorder.onerror = () => {
       if (!mountedRef.current || session !== sessionRef.current) return;
-      setError("Recording stopped unexpectedly. Please try again.");
+      setError(t.voiceInterrupted);
       stopIntentRef.current = "finish";
       phaseRef.current = "stopping";
       setPhase("stopping");
@@ -182,7 +184,7 @@ export default function VoiceRecorder({ clips, onClipsChange, transcripts = [], 
         try {
           startSegment(session, mimeType);
         } catch {
-          setError("Could not continue recording. Your first part is saved.");
+          setError(t.voiceCannotContinue);
           finishSession(session);
         }
         return;
@@ -219,7 +221,7 @@ export default function VoiceRecorder({ clips, onClipsChange, transcripts = [], 
     if (phaseRef.current !== "idle") return;
     setError(null);
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-      setError("Voice recording is not supported. Type your description instead.");
+      setError(t.voiceUnsupported);
       return;
     }
 
@@ -263,7 +265,7 @@ export default function VoiceRecorder({ clips, onClipsChange, transcripts = [], 
       if (!mountedRef.current || session !== sessionRef.current) return;
       phaseRef.current = "idle";
       setPhase("idle");
-      setError("Microphone access is off. Allow it in browser settings or type your description.");
+      setError(t.micOff);
     }
   };
 
@@ -314,12 +316,12 @@ export default function VoiceRecorder({ clips, onClipsChange, transcripts = [], 
 
   const isBusy = phase === "requesting" || phase === "stopping";
   const status = phase === "requesting"
-    ? "Waiting for microphone…"
+    ? t.micWaiting
     : phase === "recording"
-      ? "Recording…"
+      ? t.recordingNow
       : phase === "stopping"
-        ? "Saving voice note…"
-        : "Record voice note";
+        ? t.savingNote
+        : t.recordCta;
 
   return <div className="voice-recorder" data-phase={phase}>
     {!readOnly && <>
@@ -330,7 +332,7 @@ export default function VoiceRecorder({ clips, onClipsChange, transcripts = [], 
           data-recording={phase === "recording"}
           onClick={phase === "recording" ? stopRecording : startRecording}
           disabled={isBusy}
-          aria-label={phase === "recording" ? "Stop recording" : status}
+          aria-label={phase === "recording" ? t.stopRecordingAria : status}
         >
           <span className="record-btn__shape" aria-hidden="true" />
         </button>
@@ -344,12 +346,12 @@ export default function VoiceRecorder({ clips, onClipsChange, transcripts = [], 
       </div>
       <div className="voice-recorder__message" aria-live="polite">
         {phase === "recording" && elapsed >= SEGMENT_SECONDS
-          ? <span className="voice-recorder__warning">{"30 seconds left — recording will stop automatically."}</span>
-          : <span>{"Maximum 60 seconds · recording stops automatically when time is up."}</span>}
+          ? <span className="voice-recorder__warning">{t.voiceThirtyLeft}</span>
+          : <span>{t.voiceMax}</span>}
       </div>
       {error && <p className="field-error" role="alert">{error}</p>}
     </>}
-    {clips.length > 0 && <ul className="voice-recorder__list" aria-label={readOnly ? "Voice notes and transcripts" : "Attached voice notes"}>
+    {clips.length > 0 && <ul className="voice-recorder__list" aria-label={readOnly ? t.notesTranscriptsAria : t.attachedNotesAria}>
       {clips.map((clip, index) => <RecordedClip
         clip={clip}
         index={index}

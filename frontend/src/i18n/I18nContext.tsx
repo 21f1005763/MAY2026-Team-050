@@ -2,8 +2,11 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { en, type Catalog } from "./messages/en";
 import { hi } from "./messages/hi";
 import { bn } from "./messages/bn";
+import { mr } from "./messages/mr";
+import { te } from "./messages/te";
+import { ta } from "./messages/ta";
 
-export type Locale = "en" | "hi" | "bn";
+export type Locale = "en" | "hi" | "bn" | "mr" | "te" | "ta";
 export type { Catalog };
 
 export interface LocaleInfo {
@@ -18,9 +21,12 @@ export const LOCALES: readonly LocaleInfo[] = [
   { code: "en", bcp47: "en-IN", native: "English" },
   { code: "hi", bcp47: "hi-IN", native: "हिन्दी" },
   { code: "bn", bcp47: "bn-IN", native: "বাংলা" },
+  { code: "mr", bcp47: "mr-IN", native: "मराठी" },
+  { code: "te", bcp47: "te-IN", native: "తెలుగు" },
+  { code: "ta", bcp47: "ta-IN", native: "தமிழ்" },
 ];
 
-const CATALOGS: Record<Locale, Catalog> = { en, hi, bn };
+const CATALOGS: Record<Locale, Catalog> = { en, hi, bn, mr, te, ta };
 export const LOCALE_STORAGE_KEY = "jan-setu-locale";
 
 function isLocale(value: string | null): value is Locale {

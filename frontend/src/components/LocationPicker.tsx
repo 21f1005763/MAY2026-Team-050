@@ -4,6 +4,7 @@ import L from "leaflet";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
+import { useI18n } from "../i18n/I18nContext";
 
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({ iconRetinaUrl: markerIcon2x, iconUrl: markerIcon, shadowUrl: markerShadow });
@@ -52,12 +53,13 @@ function Pin({
 }
 
 export default function LocationPicker({ value, onChange, recenter }: LocationPickerProps) {
+  const { t } = useI18n();
   const position: [number, number] = value ? [value.lat, value.lon] : FALLBACK_CENTER;
   const handleMove = useCallback((lat: number, lon: number) => onChange({ lat, lon }), [onChange]);
 
   return (
     <div className="location-picker">
-      <div className="location-picker__map" role="application" aria-label={"Interactive map for choosing complaint location. Tap the map or drag the pin to set the location."}>
+      <div className="location-picker__map" role="application" aria-label={t.mapAria}>
         <MapContainer
           center={position}
           zoom={15}
@@ -73,7 +75,7 @@ export default function LocationPicker({ value, onChange, recenter }: LocationPi
         </MapContainer>
       </div>
       <p className="field__hint">
-        {value ? "Location selected. Drag the pin if you need to make it more precise." : "No location selected yet. Use your location or tap the map to place the pin."}
+        {value ? t.hintSelected : t.hintNone}
       </p>
     </div>
   );

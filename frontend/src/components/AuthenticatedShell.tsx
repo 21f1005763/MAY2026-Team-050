@@ -2,6 +2,8 @@ import { type ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { apiPostEmpty } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { useI18n } from "../i18n/I18nContext";
+import LanguagePicker from "../i18n/LanguagePicker";
 
 type IconName = "dashboard" | "new" | "about" | "logout";
 
@@ -18,7 +20,7 @@ function NavIcon({ name }: { name: IconName }) {
 export default function AuthenticatedShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const auth = useAuth();
-  const bcp47 = "en-IN";
+  const { bcp47, t } = useI18n();
   const logout = async () => {
     try {
       await apiPostEmpty("/auth/logout");
@@ -29,30 +31,32 @@ export default function AuthenticatedShell({ children }: { children: ReactNode }
   };
 
   return <div className="authenticated-shell" lang={bcp47}>
-    <a className="skip-link" href="#app-content">{"Skip to content"}</a>
+    <a className="skip-link" href="#app-content">{t.skipToContent}</a>
     <aside className="app-sidebar">
-      <NavLink className="app-brand" to="/dashboard"><img src="/jan-setu-logo-dark.svg" alt="" aria-hidden="true" />{"Jan Setu"}</NavLink>
-      <p className="app-sidebar__descriptor">{"Citizen grievance portal"}</p>
-      <nav className="app-nav" aria-label={"Application navigation"}>
-        <NavLink to="/dashboard"><NavIcon name="dashboard" /><span>{"Dashboard"}</span></NavLink>
-        <NavLink to="/complaints/new"><NavIcon name="new" /><span>{"New complaint"}</span></NavLink>
-        <NavLink to="/about"><NavIcon name="about" /><span>{"About Jan Setu"}</span></NavLink>
+      <NavLink className="app-brand" to="/dashboard"><img src="/jan-setu-logo-dark.svg" alt="" aria-hidden="true" />{t.brand}</NavLink>
+      <p className="app-sidebar__descriptor">{t.shellDescriptor}</p>
+      <nav className="app-nav" aria-label={t.appNavAria}>
+        <NavLink to="/dashboard"><NavIcon name="dashboard" /><span>{t.navDashboard}</span></NavLink>
+        <NavLink to="/complaints/new"><NavIcon name="new" /><span>{t.navNewComplaint}</span></NavLink>
+        <NavLink to="/about"><NavIcon name="about" /><span>{t.navAboutApp}</span></NavLink>
       </nav>
       <div className="app-sidebar__footer">
-        <button type="button" className="app-logout" onClick={logout}><NavIcon name="logout" /><span>{"Log out"}</span></button>
+        <LanguagePicker variant="inverse" />
+        <button type="button" className="app-logout" onClick={logout}><NavIcon name="logout" /><span>{t.logout}</span></button>
       </div>
     </aside>
     <header className="app-mobilebar">
-      <NavLink className="app-brand" to="/dashboard"><img src="/jan-setu-logo-dark.svg" alt="" aria-hidden="true" />{"Jan Setu"}</NavLink>
+      <NavLink className="app-brand" to="/dashboard"><img src="/jan-setu-logo-dark.svg" alt="" aria-hidden="true" />{t.brand}</NavLink>
       <div className="app-language--mobile">
+        <LanguagePicker variant="inverse" />
       </div>
     </header>
     <main className="app-content" id="app-content">{children}</main>
-    <nav className="app-mobile-nav" aria-label={"Application navigation"}>
-      <NavLink to="/dashboard"><NavIcon name="dashboard" /><span>{"Home"}</span></NavLink>
-      <NavLink className="app-mobile-nav__primary" to="/complaints/new"><NavIcon name="new" /><span>{"New"}</span></NavLink>
-      <NavLink to="/about"><NavIcon name="about" /><span>{"About"}</span></NavLink>
-      <button type="button" onClick={logout}><NavIcon name="logout" /><span>{"Log out"}</span></button>
+    <nav className="app-mobile-nav" aria-label={t.appNavAria}>
+      <NavLink to="/dashboard"><NavIcon name="dashboard" /><span>{t.navHome}</span></NavLink>
+      <NavLink className="app-mobile-nav__primary" to="/complaints/new"><NavIcon name="new" /><span>{t.navNew}</span></NavLink>
+      <NavLink to="/about"><NavIcon name="about" /><span>{t.about}</span></NavLink>
+      <button type="button" onClick={logout}><NavIcon name="logout" /><span>{t.logout}</span></button>
     </nav>
   </div>;
 }
