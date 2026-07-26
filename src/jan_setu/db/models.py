@@ -1,7 +1,17 @@
 import uuid
 from datetime import datetime
 from typing import Any
-from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, Text, text
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from jan_setu.db.session import Base, utc_now
@@ -238,3 +248,28 @@ class WebhookEvent(Base):
     # turns silently).
     attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+class GrievanceExtraction(Base):
+    __tablename__ = "grievance_extractions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    grievance_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("grievances.id", ondelete="CASCADE"), index=True
+    )
+    extraction_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    taxonomy_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False, default="openrouter")
+    requested_models: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
+    actual_model: Mapped[str | None] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    latency_ms: Mapped[int | None] = mapped_column(Integer)
+    raw_response: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    normalized_result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    confidence: Mapped[float | None] = mapped_column(Float)
+    needs_review: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    degradation_reason: Mapped[str | None] = mapped_column(String(128))
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    accepted_by_type: Mapped[str | None] = mapped_column(String(32))
+    accepted_by_id: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)

@@ -1,10 +1,18 @@
 """Schema-validated civic evidence extraction through OpenRouter free models."""
 
+import asyncio
+import base64
 import json
 import logging
 import re
+import time
 from dataclasses import dataclass, field
 from typing import Any
+
+import httpx
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from jan_setu.config import Settings
 from jan_setu.pipeline.taxonomy import (
     CANONICAL_CATEGORIES,
     CATEGORIES,
@@ -12,12 +20,10 @@ from jan_setu.pipeline.taxonomy import (
     canonical_category_key,
     category_or_default,
 )
-
+from jan_setu.pipeline.throttle import reserve_slot
 
 logger = logging.getLogger(__name__)
-
 PROMPT_VERSION = "civic-extract-2026-07-v2"
-
 EXTRACTION_VERSION = "2"
 
 EXTRACTION_SCHEMA: dict[str, Any] = {
@@ -95,6 +101,7 @@ IMAGE_MATCH_SYSTEM_PROMPT = (
     "A low-quality or irrelevant image is not proof the complaint is false."
 )
 
+
 @dataclass(frozen=True)
 class StructuredExtraction:
     summary: str
@@ -121,6 +128,7 @@ class StructuredExtraction:
     requested_models: tuple[str, ...] = ()
     raw: dict[str, Any] | None = field(default=None, compare=False)
 
+
 @dataclass(frozen=True)
 class Classification:
     category: str
@@ -130,12 +138,14 @@ class Classification:
     reasoning: str | None = None
     degraded: bool = False
 
+
 @dataclass(frozen=True)
 class ImageMatch:
     matches: bool
     confidence: float
     note: str | None = None
     degraded: bool = False
+
 
 def _extract_json(text: str) -> dict[str, Any] | None:
     match = re.search(r"\{.*\}", text, re.DOTALL)
@@ -147,11 +157,13 @@ def _extract_json(text: str) -> dict[str, Any] | None:
         return None
     return value if isinstance(value, dict) else None
 
+
 def _bounded_confidence(value: Any, default: float = 0.0) -> float:
     try:
         return max(0.0, min(1.0, float(value)))
     except (TypeError, ValueError):
         return default
+
 
 def parse_extraction(raw_text: str) -> StructuredExtraction | None:
     data = _extract_json(raw_text)
@@ -208,6 +220,7 @@ def parse_extraction(raw_text: str) -> StructuredExtraction | None:
         raw=data,
     )
 
+
 def parse_classification(raw_text: str) -> Classification | None:
     data = _extract_json(raw_text)
     if not data:
@@ -234,6 +247,7 @@ def parse_classification(raw_text: str) -> Classification | None:
         data.get("reasoning"),
     )
 
+
 def parse_image_match(raw_text: str) -> ImageMatch | None:
     data = _extract_json(raw_text)
     if not data or "matches" not in data:
@@ -241,3 +255,281 @@ def parse_image_match(raw_text: str) -> ImageMatch | None:
     return ImageMatch(
         bool(data["matches"]), _bounded_confidence(data.get("confidence"), 0.5), data.get("note")
     )
+
+
+# Only Groq's gpt-oss models enforce strict json_schema; other Groq models get
+# json_object mode and rely on the defensive parser + enum validation.
+GROQ_STRUCTURED_MODELS = frozenset({"openai/gpt-oss-120b", "openai/gpt-oss-20b"})
+# OpenRouter rejects `models` arrays longer than 3 with a 400.
+OPENROUTER_MODELS_CAP = 3
+
+
+def build_extraction_attempts(
+    settings: Settings,
+    *,
+    has_image: bool = False,
+    escalated: bool = False,
+    schema: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Ordered provider/model attempts: Groq first (fast, generous free tier),
+    then OpenRouter's free chain as the cross-provider failsafe. Image-bearing
+    requests skip Groq entirely — it serves no vision models. ``escalated``
+    raises gpt-oss reasoning effort for citizen-disputed re-extractions."""
+    schema_format = (
+        {
+            "type": "json_schema",
+            "json_schema": {"name": "civic_extraction", "strict": True, "schema": schema},
+        }
+        if schema
+        else None
+    )
+    attempts: list[dict[str, Any]] = []
+    if settings.groq_api_key and not has_image:
+        for model in settings.groq_model_chain:
+            body: dict[str, Any] = {"model": model}
+            if model in GROQ_STRUCTURED_MODELS:
+                body["reasoning_effort"] = "high" if escalated else "low"
+                if schema_format:
+                    body["response_format"] = schema_format
+            elif schema_format:
+                body["response_format"] = {"type": "json_object"}
+            attempts.append(
+                {
+                    "provider": "groq",
+                    "model": model,
+                    "url": f"{settings.groq_base_url.rstrip('/')}/chat/completions",
+                    "key": settings.groq_api_key,
+                    "min_interval": settings.groq_min_interval_seconds,
+                    "timeout": settings.groq_timeout_seconds,
+                    "body": body,
+                }
+            )
+    if settings.openrouter_api_key:
+        models = settings.openrouter_model_chain[:OPENROUTER_MODELS_CAP] or ["openrouter/free"]
+        body = {"models": models, "provider": {"allow_fallbacks": True, "sort": "latency"}}
+        if schema_format:
+            body["response_format"] = schema_format
+        attempts.append(
+            {
+                "provider": "openrouter",
+                "model": ",".join(models),
+                "url": f"{settings.openrouter_base_url.rstrip('/')}/chat/completions",
+                "key": settings.openrouter_api_key,
+                "min_interval": settings.openrouter_min_interval_seconds,
+                "timeout": settings.openrouter_timeout_seconds,
+                "body": body,
+            }
+        )
+    return attempts
+
+
+async def _run_attempt(
+    session: AsyncSession,
+    http_client: httpx.AsyncClient,
+    attempt: dict[str, Any],
+    *,
+    system_prompt: str,
+    user_content: str | list[dict[str, Any]],
+) -> tuple[str, str | None, int]:
+    wait = await reserve_slot(session, attempt["provider"], attempt["min_interval"])
+    if wait > 0:
+        await asyncio.sleep(wait)
+    started = time.monotonic()
+    response = await http_client.post(
+        attempt["url"],
+        headers={"Authorization": f"Bearer {attempt['key'].get_secret_value()}"},
+        json={
+            **attempt["body"],
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content},
+            ],
+        },
+        timeout=attempt["timeout"],
+    )
+    response.raise_for_status()
+    payload = response.json()
+    return (
+        payload["choices"][0]["message"]["content"],
+        payload.get("model"),
+        int((time.monotonic() - started) * 1000),
+    )
+
+
+def _degraded_extraction(reason: str, text: str | None = None) -> StructuredExtraction:
+    return StructuredExtraction(
+        summary=(text or "").strip()[:600],
+        category_id="insufficient_information",
+        alternatives=(),
+        confidence=0.0,
+        asset_scope="unknown",
+        owner_hint="unknown",
+        safety="possible" if _has_safety_terms(text or "") else "none",
+        degraded=True,
+        degradation_reason=reason,
+    )
+
+
+def _has_safety_terms(text: str) -> bool:
+    normalized = text.casefold()
+    terms = (
+        "live wire",
+        "exposed wire",
+        "open manhole",
+        "cave in",
+        "collapse",
+        "fire",
+        "injured",
+        "accident",
+        "electrocution",
+        "करंट",
+        "आग",
+        "घायल",
+        "खुला मैनहोल",
+    )
+    return any(term in normalized for term in terms)
+
+
+async def extract_issue(
+    session: AsyncSession,
+    settings: Settings,
+    http_client: httpx.AsyncClient,
+    *,
+    text: str | None,
+    image_bytes: bytes | None = None,
+    image_mime_type: str = "image/jpeg",
+    escalated: bool = False,
+    correction_context: str | None = None,
+) -> StructuredExtraction:
+    if not text or not text.strip():
+        return _degraded_extraction("missing_text", text)
+    attempts = build_extraction_attempts(
+        settings, has_image=bool(image_bytes), escalated=escalated, schema=EXTRACTION_SCHEMA
+    )
+    if not attempts:
+        return _degraded_extraction("llm_not_configured", text)
+    prompt_text = (
+        text
+        if not correction_context
+        else f"{text}\n\nCitizen review follow-up:\n{correction_context}"
+    )
+    content: str | list[dict[str, Any]] = prompt_text
+    if image_bytes:
+        content = [
+            {"type": "text", "text": f"Complaint evidence:\n{prompt_text}"},
+            {
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:{image_mime_type};base64,{base64.b64encode(image_bytes).decode()}"
+                },
+            },
+        ]
+    requested = tuple(f"{attempt['provider']}:{attempt['model']}" for attempt in attempts)
+    saw_quota = False
+    for attempt in attempts:
+        try:
+            raw, actual_model, latency_ms = await _run_attempt(
+                session,
+                http_client,
+                attempt,
+                system_prompt=EXTRACTION_SYSTEM_PROMPT,
+                user_content=content,
+            )
+        except httpx.HTTPStatusError as exc:
+            saw_quota = saw_quota or exc.response.status_code == 429
+            logger.warning(
+                "extraction_attempt_failed",
+                extra={
+                    "provider": attempt["provider"],
+                    "model": attempt["model"],
+                    "status_code": exc.response.status_code,
+                },
+            )
+            continue
+        except (httpx.HTTPError, KeyError, IndexError, ValueError) as exc:
+            logger.warning(
+                "extraction_attempt_failed",
+                extra={
+                    "provider": attempt["provider"],
+                    "model": attempt["model"],
+                    "error_type": type(exc).__name__,
+                },
+            )
+            continue
+        parsed = parse_extraction(raw)
+        if parsed is None:
+            logger.warning(
+                "extraction_attempt_unparseable",
+                extra={"provider": attempt["provider"], "model": attempt["model"]},
+            )
+            continue
+        return StructuredExtraction(
+            **{
+                **parsed.__dict__,
+                "actual_model": actual_model or attempt["model"],
+                "actual_provider": attempt["provider"],
+                "latency_ms": latency_ms,
+                "requested_models": requested,
+            }
+        )
+    logger.warning(
+        "extraction_all_attempts_failed", extra={"attempts": len(attempts), "quota": saw_quota}
+    )
+    degraded = _degraded_extraction(
+        "provider_quota_exhausted" if saw_quota else "all_models_failed", text
+    )
+    return StructuredExtraction(**{**degraded.__dict__, "requested_models": requested})
+
+
+async def classify_issue(
+    session: AsyncSession, settings: Settings, http_client: httpx.AsyncClient, *, text: str | None
+) -> Classification:
+    extraction = await extract_issue(session, settings, http_client, text=text)
+    category = category_or_default(extraction.category_id)
+    return Classification(
+        category=extraction.category_id,
+        priority=category.default_priority,
+        term=category.term_hint,
+        confidence=extraction.confidence,
+        reasoning=extraction.summary or extraction.degradation_reason,
+        degraded=extraction.degraded,
+    )
+
+
+async def check_image_match(
+    session: AsyncSession,
+    settings: Settings,
+    http_client: httpx.AsyncClient,
+    *,
+    text: str | None,
+    image_bytes: bytes,
+    mime_type: str,
+) -> ImageMatch:
+    # has_image=True routes past Groq (no vision models there) to OpenRouter.
+    attempts = build_extraction_attempts(settings, has_image=True)
+    if not attempts:
+        return ImageMatch(True, 0.0, degraded=True)
+    content = [
+        {"type": "text", "text": f"Complaint description: {text or '(none provided)'}"},
+        {
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:{mime_type};base64,{base64.b64encode(image_bytes).decode()}"
+            },
+        },
+    ]
+    for attempt in attempts:
+        try:
+            raw, _, _ = await _run_attempt(
+                session,
+                http_client,
+                attempt,
+                system_prompt=IMAGE_MATCH_SYSTEM_PROMPT,
+                user_content=content,
+            )
+        except (httpx.HTTPError, KeyError, IndexError, ValueError):
+            continue
+        parsed = parse_image_match(raw)
+        if parsed is not None:
+            return parsed
+    return ImageMatch(True, 0.0, degraded=True)
