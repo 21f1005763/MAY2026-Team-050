@@ -11,6 +11,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const NewComplaint = lazy(() => import("./pages/NewComplaint"));
 const ComplaintDetail = lazy(() => import("./pages/ComplaintDetail"));
 const OfficialLogin = lazy(() => import("./pages/OfficialLogin"));
+const OfficialConsole = lazy(() => import("./pages/OfficialConsole"));
 
 // React Router doesn't scroll to #fragment targets on client-side navigation,
 // so header links like "/#how" silently did nothing.
@@ -65,6 +66,7 @@ export default function App() {
       <Route path="/about" element={<About />} />
       <Route path="/login" element={<Login />} />
       <Route path="/official/login" element={<OfficialLogin />} />
+      <Route path="/official" element={<OfficialConsole />} />
       <Route
         path="/dashboard"
         element={
