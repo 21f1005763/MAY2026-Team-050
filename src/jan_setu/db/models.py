@@ -123,6 +123,18 @@ class FsmMessageConsumption(Base):
     state_after: Mapped[str | None] = mapped_column(String(32))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
+class ExternalRateLimit(Base):
+    """One row per throttled external provider. Claimed with ``SELECT ... FOR
+    UPDATE`` + compare-and-set to enforce a global minimum spacing between calls
+    across all processes."""
+
+    __tablename__ = "external_rate_limits"
+
+    provider: Mapped[str] = mapped_column(String(64), primary_key=True)
+    next_allowed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
 class Grievance(TimestampMixin, Base):
     """A registered citizen complaint. At most one per conversation (the unique
     ``conversation_id`` makes WhatsApp registration idempotent; web-sourced

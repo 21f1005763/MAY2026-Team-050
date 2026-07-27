@@ -47,6 +47,12 @@ class Settings(BaseSettings):
     # an unfinished chat may be resumed before it is expired and restarted.
     conversation_ttl_hours: int = 168
     service_window_hours: int = 24
+    # Speech-to-text (Sarvam saaras:v3, mode=translate -> English transcripts).
+    sarvam_api_key: SecretStr | None = None
+    sarvam_base_url: str = "https://api.sarvam.ai"
+    sarvam_model: str = "saaras:v3"
+    sarvam_min_interval_seconds: float = 1.0
+    sarvam_timeout_seconds: float = 30.0
     # LLM extraction. Groq is the primary provider (fast, 1K requests/day per
     # model on the free tier, strict json_schema on the gpt-oss models);
     # OpenRouter's free chain is the cross-provider failsafe and the only
