@@ -123,6 +123,23 @@ class FsmMessageConsumption(Base):
     state_after: Mapped[str | None] = mapped_column(String(32))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
+class GeocodeCache(Base):
+    """Durable cache of reverse-geocode results, keyed by rounded coordinates.
+    Geocodes are immutable, so there is no TTL — the cache survives restarts and
+    avoids re-billing the provider."""
+
+    __tablename__ = "geocode_cache"
+
+    provider: Mapped[str] = mapped_column(String(32), primary_key=True)
+    lat_round: Mapped[float] = mapped_column(Float, primary_key=True)
+    lon_round: Mapped[float] = mapped_column(Float, primary_key=True)
+    accept_language: Mapped[str] = mapped_column(String(32), primary_key=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    display_address: Mapped[str | None] = mapped_column(Text)
+    address_components: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    raw: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
 class ExternalRateLimit(Base):
     """One row per throttled external provider. Claimed with ``SELECT ... FOR
     UPDATE`` + compare-and-set to enforce a global minimum spacing between calls

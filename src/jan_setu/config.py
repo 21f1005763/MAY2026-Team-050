@@ -42,6 +42,16 @@ class Settings(BaseSettings):
     auto_reply_enabled: bool = False
     worker_poll_seconds: float = 2.0
     worker_batch_size: int = 10
+    # Reverse geocoding. The PUBLIC Nominatim endpoint is dev-only: its usage
+    # policy caps at 1 req/s and forbids app/bulk traffic, so production must
+    # point nominatim_base_url at a self-hosted Nominatim/Photon or a paid
+    # provider. https://operations.osmfoundation.org/policies/nominatim/
+    geocoder_provider: str = "nominatim"
+    nominatim_base_url: str = "https://nominatim.openstreetmap.org"
+    nominatim_user_agent: str = "JanSetu/0.1 (+https://github.com/tushar-mahalya/Jan-Setu)"
+    geocoder_timeout_seconds: float = 3.0
+    geocoder_min_interval_seconds: float = 1.0
+    geocoder_language: str = "hi,en"
     # Conversation engine. service_window_hours is Meta's 24h customer-service
     # window (free-form sends only inside it); conversation_ttl_hours is how long
     # an unfinished chat may be resumed before it is expired and restarted.
