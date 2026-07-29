@@ -83,6 +83,10 @@ class Settings(BaseSettings):
     )
     openrouter_min_interval_seconds: float = 3.0
     openrouter_timeout_seconds: float = 30.0
+    # Dedup window for non-priority complaints; priority categories skip it.
+    dedup_window_hours: int = 24
+    dedup_radius_m: float = 300.0
+    image_recheck_cap: int = 2
     # File uploads (voice clips, photos, generated PDFs).
     upload_dir: str = "./data/uploads"
     max_audio_bytes: int = 10 * 1024 * 1024
