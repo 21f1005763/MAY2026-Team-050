@@ -87,6 +87,13 @@ class Settings(BaseSettings):
     dedup_window_hours: int = 24
     dedup_radius_m: float = 300.0
     image_recheck_cap: int = 2
+    # Department dispatch. The Protocol in dispatchers.py is the swap seam for
+    # real municipal APIs later; both impls here are demo-grade.
+    dispatcher: Literal["mock_api", "smtp"] = "mock_api"
+    mock_api_base_url: str = "http://localhost:8000"
+    smtp_host: str = "localhost"
+    smtp_port: int = 1025
+    smtp_from: str = "no-reply@jan-setu.local"
     # File uploads (voice clips, photos, generated PDFs).
     upload_dir: str = "./data/uploads"
     max_audio_bytes: int = 10 * 1024 * 1024

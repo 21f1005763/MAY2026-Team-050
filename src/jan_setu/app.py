@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from jan_setu.whatsapp.api import router
 from jan_setu.config import configure_logging, get_settings
 from jan_setu.logctx import request_id_var
+from jan_setu.pipeline.dispatchers import mock_router
 
 settings = get_settings()
 configure_logging(settings.log_level, log_format=settings.log_format)
@@ -40,6 +41,7 @@ def create_app() -> FastAPI:
     )
     add_request_logging(app)
     app.include_router(router)
+    app.include_router(mock_router)
     return app
 
 
