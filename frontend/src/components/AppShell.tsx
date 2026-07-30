@@ -43,3 +43,5 @@ export function AppShell({ children }: { children: ReactNode }) {
   return <div className="public-shell" lang={bcp47}><a className="skip-link" href="#main-content">{t.skipToContent}</a><Header />{children}<footer className="parity-footer"><div className="parity-container"><NavLink className="parity-brand" to="/"><img src="/jan-setu-logo-dark.svg" alt="" aria-hidden="true" /><b>{t.brand}</b></NavLink><p>{t.footerNote}</p><nav aria-label="Footer navigation"><NavLink to="/about">{t.about}</NavLink><NavLink to="/login">{t.footerSignInLink}</NavLink></nav><small>© {new Date().getFullYear()} Jan Setu</small></div></footer></div>;
 }
 
+export function LoadingState() { const { t } = useI18n(); return <main className="state-page state-page--loading" aria-busy="true"><span className="state-page__mark" aria-hidden="true"><img src="/jan-setu-logo.svg" alt="" /></span><p>{t.loading}</p></main>; }
+export function ErrorState() { const { t } = useI18n(); return <main className="state-page"><span className="state-page__mark" aria-hidden="true">!</span><h1>{t.errorTitle}</h1><p>{t.errorBody}</p></main>; }

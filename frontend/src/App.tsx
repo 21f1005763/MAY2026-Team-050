@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { restoreSession } from "./api/client";
 import { useAuth } from "./auth/AuthContext";
 import Landing from "./pages/Landing";
+import { LoadingState } from "./components/AppShell";
 import AuthenticatedShell from "./components/AuthenticatedShell";
 
 const About = lazy(() => import("./pages/About"));
@@ -56,10 +57,10 @@ export default function App() {
     };
   }, [login]);
 
-  if (isRestoring) return <main className="state-page" aria-busy="true"><p>Loading Jan Setu…</p></main>;
+  if (isRestoring) return <LoadingState />;
 
   return (
-    <Suspense fallback={<main className="state-page" aria-busy="true"><p>Loading Jan Setu…</p></main>}>
+    <Suspense fallback={<LoadingState />}>
       <ScrollToHash />
       <Routes>
       <Route path="/" element={<Landing />} />
