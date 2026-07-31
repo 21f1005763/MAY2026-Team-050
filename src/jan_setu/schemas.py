@@ -42,6 +42,31 @@ class SendTextResponse(BaseModel):
     provider_response: dict[str, Any]
     stored_message: MessageRead
 
+class RequestCodeRequest(BaseModel):
+    phone: str = Field(min_length=5, max_length=32)
+    browser_nonce: str | None = Field(default=None, min_length=32, max_length=256)
+    browser_label: str | None = Field(default=None, max_length=128)
+
+class RequestCodeResponse(BaseModel):
+    verification_id: UUID
+    method: str = "reverse_code"
+    code: str | None = None
+    wa_link: str | None = None
+    browser_label: str | None = None
+    requested_at: datetime | None = None
+    expires_at: datetime | None = None
+
+class ApprovalStatusRequest(BaseModel):
+    verification_id: UUID
+    browser_nonce: str = Field(min_length=32, max_length=256)
+
+class AuthStatusResponse(BaseModel):
+    status: str  # "pending" | "verified" | "denied" | "expired"
+    access_token: str | None = None
+
+class RefreshResponse(BaseModel):
+    access_token: str
+
 class GrievanceEventRead(BaseModel):
     status: str
     note: str | None

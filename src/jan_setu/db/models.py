@@ -260,6 +260,56 @@ class GrievanceEvent(Base):
     note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
+class User(TimestampMixin, Base):
+    """A web-app account. ``phone`` is the WhatsApp-registered number (== the
+    ``wa_id`` of the linked ``Contact``) and is the sole login identifier —
+    there is no password; identity is proven by the reverse-OTP flow."""
+
+    __tablename__ = "users"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    phone: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
+    contact_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("contacts.id", ondelete="SET NULL"), unique=True
+    )
+    name: Mapped[str | None] = mapped_column(String(255))
+
+class PhoneVerification(Base):
+    """A reverse-OTP challenge: the web app shows ``code`` to the user, who
+    sends it TO the WhatsApp bot (we cannot message them first). ``code_hash``
+    is sha256 of the code — these are short-lived random nonces, not passwords,
+    so a fast hash is the correct tool, not bcrypt/argon2."""
+
+    __tablename__ = "phone_verifications"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    phone: Mapped[str] = mapped_column(String(32), nullable=False)
+    code_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+    __table_args__ = (Index("ix_phone_verifications_phone_created_at", "phone", "created_at"),)
+
+class RefreshToken(Base):
+    """A rotating refresh token. ``token_hash`` is sha256 of the raw token sent
+    to the client in an httpOnly cookie; the raw value is never stored."""
+
+    __tablename__ = "refresh_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
 class WebhookEvent(Base):
     __tablename__ = "webhook_events"
 

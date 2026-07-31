@@ -9,6 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from jan_setu.whatsapp.api import router
+from jan_setu.auth import router as auth_router
 from jan_setu.config import configure_logging, get_settings
 from jan_setu.logctx import request_id_var
 from jan_setu.pipeline.dispatchers import mock_router
@@ -41,6 +42,7 @@ def create_app() -> FastAPI:
     )
     add_request_logging(app)
     app.include_router(router)
+    app.include_router(auth_router)
     app.include_router(mock_router)
     return app
 
