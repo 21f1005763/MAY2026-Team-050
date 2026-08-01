@@ -85,6 +85,45 @@ class GrievanceSummary(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class GrievanceDraftResponse(BaseModel):
+    id: UUID
+    human_id: str
+    status: str
+    category: str | None
+    department_name: str | None
+    priority: str | None
+    term: str | None
+    confidence: float | None
+    address: str | None
+    issue_text: str | None
+    image_match_status: str | None
+    flags: list[str]
+    pdf_url: str | None
+    taxonomy_version: str | None = None
+    category_id: str | None = None
+    category_label: str | None = None
+    domain_label: str | None = None
+    safety_level: str | None = None
+    asset_scope: str | None = None
+    disposition: str | None = None
+    review_status: str | None = None
+    structured_facts: dict[str, Any] | None = None
+    routing: dict[str, Any] | None = None
+    transcript_metadata: list[dict[str, Any]] = Field(default_factory=list)
+    voice_note_urls: list[str] = Field(default_factory=list)
+    voice_note_metadata: list[dict[str, Any]] = Field(default_factory=list)
+
+class TranscriptionPreview(BaseModel):
+    text: str | None = None
+    language: str | None = None
+    status: str
+
+class GrievanceReviewPatch(BaseModel):
+    category_id: str | None = None
+    asset_scope: str | None = None
+    summary: str | None = Field(default=None, max_length=600)
+    clarification_answer: str | None = Field(default=None, max_length=2000)
+
 class GrievanceDetail(GrievanceSummary):
     address: str | None
     issue_text: str | None
