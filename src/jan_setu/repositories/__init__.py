@@ -23,6 +23,12 @@ from jan_setu.repositories.grievances import (
     list_grievances_for_user,
     set_grievance_fields,
 )
+from jan_setu.repositories.jobs import (
+    claim_pipeline_jobs,
+    complete_pipeline_job,
+    enqueue_pipeline_job,
+    fail_pipeline_job,
+)
 from jan_setu.repositories.messages import (
     StoredIncomingMessage,
     claim_outbound,
@@ -62,11 +68,15 @@ __all__ = [
     "claim_event",
     "claim_inbound",
     "claim_outbound",
+    "claim_pipeline_jobs",
+    "complete_pipeline_job",
     "consume_verification",
     "count_recent_verifications",
     "create_draft_grievance",
     "create_phone_verification",
     "create_refresh_token",
+    "enqueue_pipeline_job",
+    "fail_pipeline_job",
     "fetch_expired_windows",
     "fetch_stuck_dispatching",
     "fetch_stuck_processing",
