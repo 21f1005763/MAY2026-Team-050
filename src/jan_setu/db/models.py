@@ -328,6 +328,45 @@ class WebhookEvent(Base):
     attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+class Jurisdiction(TimestampMixin, Base):
+    __tablename__ = "jurisdictions"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    taxonomy_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    is_demo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    geofence: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+
+class JurisdictionRoute(TimestampMixin, Base):
+    __tablename__ = "jurisdiction_routes"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    jurisdiction_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("jurisdictions.id", ondelete="CASCADE"), index=True
+    )
+    taxonomy_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    category_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    department_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    owning_agency: Mapped[str] = mapped_column(String(255), nullable=False)
+    dispatch_target: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    dispatch_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    sla_hours: Mapped[int | None] = mapped_column(Integer)
+    source_url: Mapped[str | None] = mapped_column(Text)
+    reviewed_by: Mapped[str | None] = mapped_column(String(255))
+    effective_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    effective_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index(
+            "uq_jurisdiction_route_version_category",
+            "jurisdiction_id",
+            "taxonomy_version",
+            "category_id",
+            unique=True,
+        ),
+    )
+
 class GrievanceExtraction(Base):
     __tablename__ = "grievance_extractions"
 
@@ -385,3 +424,49 @@ class DispatchOutbox(TimestampMixin, Base):
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     provider_ref: Mapped[str | None] = mapped_column(String(255))
     last_error: Mapped[str | None] = mapped_column(Text)
+
+class OfficialUser(TimestampMixin, Base):
+    __tablename__ = "official_users"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(32), nullable=False)
+    jurisdiction_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("jurisdictions.id", ondelete="RESTRICT"), index=True
+    )
+    department_keys: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+class OfficialLoginChallenge(Base):
+    __tablename__ = "official_login_challenges"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    official_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("official_users.id", ondelete="CASCADE"), index=True
+    )
+    email_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+class OfficialAuditEvent(Base):
+    __tablename__ = "official_audit_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    official_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("official_users.id", ondelete="RESTRICT"), index=True
+    )
+    grievance_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("grievances.id", ondelete="SET NULL"), index=True
+    )
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text)
+    before: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    after: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    request_id: Mapped[str | None] = mapped_column(String(64))
+    ip_hash: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
