@@ -310,6 +310,42 @@ class RefreshToken(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
+class LoginApprovalChallenge(Base):
+    """Browser-bound WhatsApp login approval for an existing linked citizen."""
+
+    __tablename__ = "login_approval_challenges"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    contact_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("contacts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    phone: Mapped[str] = mapped_column(String(32), nullable=False)
+    verifier_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    browser_nonce_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    browser_label: Mapped[str | None] = mapped_column(String(128))
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="pending", index=True)
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decision_message_id: Mapped[str | None] = mapped_column(String(255), unique=True)
+    approval_outbound_message_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("whatsapp_messages.id", ondelete="SET NULL"), index=True
+    )
+    request_ip_hash: Mapped[str | None] = mapped_column(String(64))
+
+    __table_args__ = (
+        Index("ix_login_approval_user_status_requested", "user_id", "status", "requested_at"),
+    )
+
 class WebhookEvent(Base):
     __tablename__ = "webhook_events"
 
