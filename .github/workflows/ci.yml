@@ -52,3 +52,105 @@ jobs:
         run: uv sync --frozen
 
       - name: Run tests
+        run: uv run pytest
+
+  migrations:
+    name: Migration check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: jan_setu
+          POSTGRES_USER: jan_setu_app
+          POSTGRES_PASSWORD: jan_setu_dev_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jan_setu_app -d jan_setu"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: jan_setu
+      POSTGRES_USER: jan_setu_app
+      POSTGRES_PASSWORD: jan_setu_dev_password
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Apply migrations to a clean database
+        run: uv run alembic upgrade head
+
+      - name: Check models match migrations (no drift)
+        run: uv run alembic check
+
+  frontend:
+    name: Frontend (build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Type check
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Build production artifact
+        working-directory: frontend
+        env:
+          VITE_ASSET_BASE: /portal/
+          VITE_TILE_URL: https://tiles.example.test/{z}/{x}/{y}.png
+        run: npm run build
+
+      - name: Check production artifact
+        working-directory: frontend
+        run: |
+          test -f dist/index.html
+          grep -q '/portal/assets/' dist/index.html
+          grep -R -q 'tiles.example.test' dist/assets
+
+      - name: Validate Nginx configuration and response headers
+        run: |
+          docker build -t jan-setu-frontend-ci frontend
+          docker run -d --rm --name jan-setu-frontend-ci -p 127.0.0.1:8080:80 jan-setu-frontend-ci
+          trap 'docker stop jan-setu-frontend-ci' EXIT
+          for attempt in $(seq 1 20); do curl --fail --silent http://127.0.0.1:8080/ >/dev/null && break; sleep 1; done
+          curl --fail --silent http://127.0.0.1:8080/deep/link | grep -q '<div id="root">'
+          asset=$(find frontend/dist/assets -type f | head -n 1 | xargs basename)
+          curl --fail --silent --head "http://127.0.0.1:8080/assets/$asset" | grep -qi 'Cache-Control: public, max-age=31536000, immutable'
+          curl --fail --silent --head http://127.0.0.1:8080/ | grep -qi 'Cache-Control: no-cache'
+
+  ci-success:
+    name: CI success
+    if: always()
+    needs: [lint, test, migrations, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any required job failed
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: exit 1
+
+      - name: All checks passed
+        run: echo "lint, test, migration, and frontend checks all passed"
