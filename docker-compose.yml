@@ -1,0 +1,150 @@
+name: jan-setu
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    profiles:
+      - dev
+      - prod
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-jan_setu}
+      POSTGRES_USER: ${POSTGRES_USER:-jan_setu_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jan_setu_dev_password}
+    ports:
+      - "127.0.0.1:5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build: .
+    image: jan-setu-api:local
+    command: uvicorn jan_setu.main:app --host 0.0.0.0 --port 8000
+    # Load the full .env so container settings never drift from local dev; only
+    # override what must differ inside the compose network (the DB hostname).
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - uploads:/data/uploads
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - prod
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE: ${VITE_API_BASE:-}
+        VITE_ASSET_BASE: ${VITE_ASSET_BASE:-/}
+        VITE_TILE_URL: ${VITE_TILE_URL:-https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png}
+    image: jan-setu-frontend:local
+    ports:
+      - "127.0.0.1:8080:80"
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    profiles:
+      - prod
+
+  # Daily local development worker. FastAPI itself runs on the host at :8000.
+  worker-dev:
+    build: .
+    image: jan-setu-api:local
+    command: jan-setu-worker
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      MOCK_API_BASE_URL: http://host.docker.internal:8000
+      UPLOAD_DIR: /data/uploads
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # The API runs on the host in dev, so bind its artifact directory here.
+    # A named volume would make host uploads/PDFs invisible to this worker.
+    volumes:
+      - ./data/uploads:/data/uploads
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    profiles:
+      - dev
+
+  # Full-container stack worker. It reaches the Compose API service directly.
+  worker:
+    build: .
+    image: jan-setu-api:local
+    command: jan-setu-worker
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      MOCK_API_BASE_URL: http://api:8000
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - uploads:/data/uploads
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    profiles:
+      - prod
+
+  # Local-only SMTP inbox. It is not part of Azure/production deployment.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "127.0.0.1:8025:8025"
+      - "127.0.0.1:1025:1025"
+    restart: unless-stopped
+    profiles:
+      - dev
+      - prod
+
+  # Temporary Cloudflare URL for Meta WhatsApp webhook development. The API runs
+  # on the host in the dev workflow, so cloudflared reaches Docker Desktop's host bridge.
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate --protocol http2 --url http://host.docker.internal:8000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    profiles:
+      - dev
+
+volumes:
+  postgres_data:
+  uploads:
