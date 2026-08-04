@@ -23,6 +23,7 @@ frontend/playwright-report/
 .claude/launch.json
 .claude/plans/
 .impeccable/
+skills-lock.json
 
 # Runtime uploads generated during local testing
 data/
