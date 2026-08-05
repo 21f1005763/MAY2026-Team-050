@@ -10,6 +10,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -23,6 +24,7 @@ class TimestampMixin:
         DateTime(timezone=True), default=utc_now, onupdate=utc_now
     )
 
+
 class Contact(TimestampMixin, Base):
     __tablename__ = "contacts"
 
@@ -31,6 +33,7 @@ class Contact(TimestampMixin, Base):
     profile_name: Mapped[str | None] = mapped_column(String(255))
 
     messages: Mapped[list["WhatsAppMessage"]] = relationship(back_populates="contact")
+
 
 class WhatsAppMessage(TimestampMixin, Base):
     __tablename__ = "whatsapp_messages"
@@ -78,6 +81,7 @@ class WhatsAppMessage(TimestampMixin, Base):
 
     contact: Mapped[Contact | None] = relationship(back_populates="messages")
 
+
 class Conversation(TimestampMixin, Base):
     """One guided dialog with a contact. At most one is ``active`` per contact
     (enforced by a partial unique index)."""
@@ -108,6 +112,7 @@ class Conversation(TimestampMixin, Base):
         ),
     )
 
+
 class FsmMessageConsumption(Base):
     """Idempotency gate + transition log: one row per inbound message the FSM has
     consumed. A replayed inbound collides on ``inbound_message_id`` and is skipped."""
@@ -122,6 +127,7 @@ class FsmMessageConsumption(Base):
     state_before: Mapped[str | None] = mapped_column(String(32))
     state_after: Mapped[str | None] = mapped_column(String(32))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
 
 class GeocodeCache(Base):
     """Durable cache of reverse-geocode results, keyed by rounded coordinates.
@@ -140,6 +146,7 @@ class GeocodeCache(Base):
     raw: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
+
 class ExternalRateLimit(Base):
     """One row per throttled external provider. Claimed with ``SELECT ... FOR
     UPDATE`` + compare-and-set to enforce a global minimum spacing between calls
@@ -151,6 +158,7 @@ class ExternalRateLimit(Base):
     next_allowed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now
     )
+
 
 class Grievance(TimestampMixin, Base):
     """A registered citizen complaint. At most one per conversation (the unique
@@ -233,8 +241,12 @@ class Grievance(TimestampMixin, Base):
     policy_version: Mapped[str | None] = mapped_column(String(32))
     routing_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     structured_facts: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
-    transcript_metadata: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
-    state_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    transcript_metadata: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    state_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
 
     __table_args__ = (
         Index("ix_grievances_status", "status"),
@@ -242,6 +254,7 @@ class Grievance(TimestampMixin, Base):
         Index("ix_grievances_category_window", "category", "window_expires_at"),
         Index("ix_grievances_lat_lon", "location_latitude", "location_longitude"),
     )
+
 
 class GrievanceEvent(Base):
     """Append-only status-history audit trail for one grievance. Drives both the
@@ -260,6 +273,7 @@ class GrievanceEvent(Base):
     note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
+
 class User(TimestampMixin, Base):
     """A web-app account. ``phone`` is the WhatsApp-registered number (== the
     ``wa_id`` of the linked ``Contact``) and is the sole login identifier —
@@ -273,6 +287,7 @@ class User(TimestampMixin, Base):
         UUID(as_uuid=True), ForeignKey("contacts.id", ondelete="SET NULL"), unique=True
     )
     name: Mapped[str | None] = mapped_column(String(255))
+
 
 class PhoneVerification(Base):
     """A reverse-OTP challenge: the web app shows ``code`` to the user, who
@@ -295,6 +310,7 @@ class PhoneVerification(Base):
 
     __table_args__ = (Index("ix_phone_verifications_phone_created_at", "phone", "created_at"),)
 
+
 class RefreshToken(Base):
     """A rotating refresh token. ``token_hash`` is sha256 of the raw token sent
     to the client in an httpOnly cookie; the raw value is never stored."""
@@ -309,6 +325,7 @@ class RefreshToken(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
 
 class LoginApprovalChallenge(Base):
     """Browser-bound WhatsApp login approval for an existing linked citizen."""
@@ -346,6 +363,7 @@ class LoginApprovalChallenge(Base):
         Index("ix_login_approval_user_status_requested", "user_id", "status", "requested_at"),
     )
 
+
 class WebhookEvent(Base):
     __tablename__ = "webhook_events"
 
@@ -364,15 +382,21 @@ class WebhookEvent(Base):
     attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+
 class Jurisdiction(TimestampMixin, Base):
     __tablename__ = "jurisdictions"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     taxonomy_version: Mapped[str] = mapped_column(String(32), nullable=False)
-    is_demo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    is_demo: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
+    active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
     geofence: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+
 
 class JurisdictionRoute(TimestampMixin, Base):
     __tablename__ = "jurisdiction_routes"
@@ -386,7 +410,9 @@ class JurisdictionRoute(TimestampMixin, Base):
     department_key: Mapped[str] = mapped_column(String(64), nullable=False)
     owning_agency: Mapped[str] = mapped_column(String(255), nullable=False)
     dispatch_target: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
-    dispatch_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    dispatch_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     sla_hours: Mapped[int | None] = mapped_column(Integer)
     source_url: Mapped[str | None] = mapped_column(Text)
     reviewed_by: Mapped[str | None] = mapped_column(String(255))
@@ -394,14 +420,14 @@ class JurisdictionRoute(TimestampMixin, Base):
     effective_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     __table_args__ = (
-        Index(
-            "uq_jurisdiction_route_version_category",
+        UniqueConstraint(
             "jurisdiction_id",
             "taxonomy_version",
             "category_id",
-            unique=True,
+            name="uq_jurisdiction_route_version_category",
         ),
     )
+
 
 class GrievanceExtraction(Base):
     __tablename__ = "grievance_extractions"
@@ -414,19 +440,24 @@ class GrievanceExtraction(Base):
     taxonomy_version: Mapped[str] = mapped_column(String(32), nullable=False)
     prompt_version: Mapped[str] = mapped_column(String(32), nullable=False)
     provider: Mapped[str] = mapped_column(String(32), nullable=False, default="openrouter")
-    requested_models: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
+    requested_models: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
     actual_model: Mapped[str | None] = mapped_column(String(255))
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     latency_ms: Mapped[int | None] = mapped_column(Integer)
     raw_response: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     normalized_result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     confidence: Mapped[float | None] = mapped_column(Float)
-    needs_review: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    needs_review: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
     degradation_reason: Mapped[str | None] = mapped_column(String(128))
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     accepted_by_type: Mapped[str | None] = mapped_column(String(32))
     accepted_by_id: Mapped[str | None] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
 
 class PipelineJob(TimestampMixin, Base):
     __tablename__ = "pipeline_jobs"
@@ -438,12 +469,19 @@ class PipelineJob(TimestampMixin, Base):
     stage: Mapped[str] = mapped_column(String(32), nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending", index=True)
     idempotency_key: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
-    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    max_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    attempt_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+    max_attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=5, server_default=text("5")
+    )
     next_attempt_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_error: Mapped[str | None] = mapped_column(Text)
-    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    payload: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+
 
 class DispatchOutbox(TimestampMixin, Base):
     __tablename__ = "dispatch_outbox"
@@ -455,11 +493,14 @@ class DispatchOutbox(TimestampMixin, Base):
     idempotency_key: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending", index=True)
     routing_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
-    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    attempt_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
     next_attempt_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     provider_ref: Mapped[str | None] = mapped_column(String(255))
     last_error: Mapped[str | None] = mapped_column(Text)
+
 
 class OfficialUser(TimestampMixin, Base):
     __tablename__ = "official_users"
@@ -471,9 +512,14 @@ class OfficialUser(TimestampMixin, Base):
     jurisdiction_id: Mapped[str] = mapped_column(
         String(64), ForeignKey("jurisdictions.id", ondelete="RESTRICT"), index=True
     )
-    department_keys: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
-    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    department_keys: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
 
 class OfficialLoginChallenge(Base):
     __tablename__ = "official_login_challenges"
@@ -486,8 +532,11 @@ class OfficialLoginChallenge(Base):
     code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    attempt_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
 
 class OfficialAuditEvent(Base):
     __tablename__ = "official_audit_events"

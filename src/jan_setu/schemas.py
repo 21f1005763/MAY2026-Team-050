@@ -13,6 +13,7 @@ class ContactRead(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class MessageRead(BaseModel):
     id: UUID
     contact_id: UUID | None
@@ -34,18 +35,22 @@ class MessageRead(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class SendTextRequest(BaseModel):
     to: str = Field(min_length=5, max_length=32)
     body: str = Field(min_length=1, max_length=4096)
+
 
 class SendTextResponse(BaseModel):
     provider_response: dict[str, Any]
     stored_message: MessageRead
 
+
 class RequestCodeRequest(BaseModel):
     phone: str = Field(min_length=5, max_length=32)
     browser_nonce: str | None = Field(default=None, min_length=32, max_length=256)
     browser_label: str | None = Field(default=None, max_length=128)
+
 
 class RequestCodeResponse(BaseModel):
     verification_id: UUID
@@ -56,16 +61,20 @@ class RequestCodeResponse(BaseModel):
     requested_at: datetime | None = None
     expires_at: datetime | None = None
 
+
 class ApprovalStatusRequest(BaseModel):
     verification_id: UUID
     browser_nonce: str = Field(min_length=32, max_length=256)
+
 
 class AuthStatusResponse(BaseModel):
     status: str  # "pending" | "verified" | "denied" | "expired"
     access_token: str | None = None
 
+
 class RefreshResponse(BaseModel):
     access_token: str
+
 
 class GrievanceEventRead(BaseModel):
     status: str
@@ -73,6 +82,7 @@ class GrievanceEventRead(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
 
 class GrievanceSummary(BaseModel):
     id: UUID
@@ -84,6 +94,7 @@ class GrievanceSummary(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
 
 class GrievanceDraftResponse(BaseModel):
     id: UUID
@@ -113,16 +124,19 @@ class GrievanceDraftResponse(BaseModel):
     voice_note_urls: list[str] = Field(default_factory=list)
     voice_note_metadata: list[dict[str, Any]] = Field(default_factory=list)
 
+
 class TranscriptionPreview(BaseModel):
     text: str | None = None
     language: str | None = None
     status: str
+
 
 class GrievanceReviewPatch(BaseModel):
     category_id: str | None = None
     asset_scope: str | None = None
     summary: str | None = Field(default=None, max_length=600)
     clarification_answer: str | None = Field(default=None, max_length=2000)
+
 
 class GrievanceDetail(GrievanceSummary):
     address: str | None

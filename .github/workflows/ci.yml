@@ -134,11 +134,23 @@ jobs:
       - name: Validate Nginx configuration and response headers
         run: |
           docker build -t jan-setu-frontend-ci frontend
-          docker run -d --rm --name jan-setu-frontend-ci -p 127.0.0.1:8080:80 jan-setu-frontend-ci
+          # nginx resolves the "api" upstream at startup and aborts if unknown.
+          docker run -d --rm --name jan-setu-frontend-ci --add-host api:127.0.0.1 \
+            -p 127.0.0.1:8080:80 jan-setu-frontend-ci
           trap 'docker stop jan-setu-frontend-ci' EXIT
-          for attempt in $(seq 1 20); do curl --fail --silent http://127.0.0.1:8080/ >/dev/null && break; sleep 1; done
+          ready=""
+          for attempt in $(seq 1 20); do
+            curl --fail --silent http://127.0.0.1:8080/ >/dev/null && { ready=1; break; }
+            sleep 1
+          done
+          if [ -z "$ready" ]; then
+            echo "::error::frontend container never became ready; nginx log follows"
+            docker logs jan-setu-frontend-ci || true
+            exit 1
+          fi
           curl --fail --silent http://127.0.0.1:8080/deep/link | grep -q '<div id="root">'
-          asset=$(find frontend/dist/assets -type f | head -n 1 | xargs basename)
+          # From the image, not frontend/dist: different build, different hashes.
+          asset=$(docker exec jan-setu-frontend-ci sh -c 'ls /usr/share/nginx/html/assets' | head -n 1)
           curl --fail --silent --head "http://127.0.0.1:8080/assets/$asset" | grep -qi 'Cache-Control: public, max-age=31536000, immutable'
           curl --fail --silent --head http://127.0.0.1:8080/ | grep -qi 'Cache-Control: no-cache'
 
