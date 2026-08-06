@@ -123,8 +123,15 @@ def _send_official_code_email(
     message.set_content(f"Your one-time Jan Setu code is {code}. It expires in 10 minutes.")
     try:
         with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=5) as smtp:
+            smtp.ehlo()
+            # Opportunistic upgrade: the OTP is sensitive in transit, and most
+            # real relays advertise STARTTLS. Local dev/test SMTP debug servers
+            # (e.g. aiosmtpd on smtp_port=1025) don't, so this is a no-op there.
+            if smtp.has_extn("starttls"):
+                smtp.starttls()
+                smtp.ehlo()
             smtp.send_message(message)
-    except OSError:
+    except (OSError, smtplib.SMTPException):
         logger.exception("official_otp_delivery_failed", extra={"official_id": official_id})
 
 
