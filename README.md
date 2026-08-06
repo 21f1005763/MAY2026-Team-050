@@ -44,10 +44,9 @@ Install once:
 For the Docker workflow below, Python, `uv`, and Node.js are **not** required on the host.
 
 ### Start everything
-
 ```sh
-git clone git@github.com:tushar-mahalya/Jan-Setu.git
-cd Jan-Setu
+git clone git@github.com:21f1005763/MAY2026-Team-050.git
+cd MAY2026-Team-050
 cp .env.example .env
 docker compose --profile prod up -d --build
 docker compose exec -T api uv run alembic upgrade head
@@ -130,11 +129,13 @@ and Vite hot module reload. **Do not run `uv run jan-setu-worker` locally.**
 ### One-time setup
 
 ```sh
-cd Jan-Setu
+cd MAY2026-Team-050
 cp .env.example .env
-uv sync
-npm --prefix frontend ci
+sh scripts/setup-dev.sh
 ```
+
+`setup-dev.sh` is the only supported setup path — it installs dependencies and
+the git hooks. Running `uv sync` alone leaves the hooks uninstalled.
 
 ### Start the stack
 
@@ -244,7 +245,7 @@ The app builds its host-local PostgreSQL connection from `POSTGRES_HOST`,
 `.env`. Set `DATABASE_URL` only when a deployment platform supplies one full
 connection URL.
 
-Optional shell setup helper:
+Re-run the setup helper after changing dependencies or hook configuration:
 
 ```sh
 sh scripts/setup-dev.sh
