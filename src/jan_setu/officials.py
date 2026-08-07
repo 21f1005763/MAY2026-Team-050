@@ -5,17 +5,19 @@ import logging
 import secrets
 import smtplib
 from email.message import EmailMessage
+from datetime import timedelta
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
 import jwt
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, EmailStr, Field
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from jan_setu.config import Settings, get_settings
 from jan_setu.db import get_session, utc_now
-from jan_setu.db.models import Grievance, OfficialUser
+from jan_setu.db.models import Grievance, OfficialLoginChallenge, OfficialUser
 from jan_setu.logctx import request_id_var
 from jan_setu.pipeline.taxonomy import (
     TAXONOMY_VERSION,
@@ -72,6 +74,23 @@ class OfficialAction(BaseModel):
 
 def _hash(value: str) -> str:
     return hashlib.sha256(value.strip().lower().encode()).hexdigest()
+
+
+async def _recent_official_challenge_count(session: AsyncSession, *, email_hash: str) -> int:
+    """Challenges issued for this email in the last hour. Without this, the
+    per-challenge 5-attempt lockout is meaningless — an attacker can just
+    request a fresh challenge (no auth required) after every 5 guesses and
+    keep brute-forcing the 6-digit code indefinitely."""
+    since = utc_now() - timedelta(hours=1)
+    result = await session.execute(
+        select(func.count())
+        .select_from(OfficialLoginChallenge)
+        .where(
+            OfficialLoginChallenge.email_hash == email_hash,
+            OfficialLoginChallenge.created_at >= since,
+        )
+    )
+    return result.scalar_one()
 
 
 def _official_token(settings: Settings, official: OfficialUser) -> str:
@@ -143,12 +162,22 @@ async def request_official_code(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> OfficialCodeRequested:
     email = body.email.strip().lower()
+    email_hash = _hash(email)
+    # Rate limit by email hash (not by whether the account exists) so the
+    # 429 itself never leaks account existence.
+    if await _recent_official_challenge_count(session, email_hash=email_hash) >= (
+        settings.official_code_max_per_hour
+    ):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many code requests for this email. Try again later.",
+        )
     official = await get_official_by_email(session, email=email)
     code = f"{secrets.randbelow(1_000_000):06d}"
     challenge = await create_official_challenge(
         session,
         official_user_id=official.id if official else None,
-        email_hash=_hash(email),
+        email_hash=email_hash,
         code_hash=_hash(code),
     )
     # Generic response prevents account enumeration; sending the mail after the

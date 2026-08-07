@@ -120,6 +120,7 @@ class Settings(BaseSettings):
     refresh_token_days: int = 30
     verification_code_ttl_minutes: int = 10
     verification_max_per_hour: int = 3
+    official_code_max_per_hour: int = 5
 
     # Web frontend.
     cors_origins: str = "http://localhost:5173"
