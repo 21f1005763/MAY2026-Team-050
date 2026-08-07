@@ -253,6 +253,10 @@ class Grievance(TimestampMixin, Base):
         Index("ix_grievances_created_at", "created_at"),
         Index("ix_grievances_category_window", "category", "window_expires_at"),
         Index("ix_grievances_lat_lon", "location_latitude", "location_longitude"),
+        # Matches repositories/officials.py:list_scoped_grievances, which always
+        # filters on jurisdiction_id and (for department_officer) also on
+        # department_key — the officials triage dashboard's main query.
+        Index("ix_grievances_jurisdiction_department", "jurisdiction_id", "department_key"),
     )
 
 
@@ -304,7 +308,7 @@ class PhoneVerification(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     user_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), index=True
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
@@ -381,6 +385,19 @@ class WebhookEvent(Base):
     # turns silently).
     attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        # repositories/webhook_events.py:fetch_unprocessed_event_ids scans
+        # WHERE processed_at IS NULL ORDER BY created_at. Without this, the
+        # plain created_at index still has to walk past every already-
+        # processed (oldest-first) row before reaching the small unprocessed
+        # tail, degrading as the table grows.
+        Index(
+            "ix_webhook_events_unprocessed",
+            "created_at",
+            postgresql_where=text("processed_at IS NULL"),
+        ),
+    )
 
 
 class Jurisdiction(TimestampMixin, Base):
@@ -482,6 +499,15 @@ class PipelineJob(TimestampMixin, Base):
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
     )
 
+    __table_args__ = (
+        # repositories/jobs.py:claim_pipeline_jobs filters status IN (...) AND
+        # next_attempt_at <= now, ORDER BY next_attempt_at, on every worker
+        # poll. The single-column status index leaves next_attempt_at
+        # unindexed within each status, forcing a sort/filter over every job
+        # in that status as the table grows.
+        Index("ix_pipeline_jobs_status_next_attempt", "status", "next_attempt_at"),
+    )
+
 
 class DispatchOutbox(TimestampMixin, Base):
     __tablename__ = "dispatch_outbox"
@@ -519,6 +545,16 @@ class OfficialUser(TimestampMixin, Base):
         Boolean, nullable=False, default=True, server_default=text("true")
     )
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        # repositories/officials.py:get_official_by_email looks up by
+        # func.lower(email) on every login attempt. The plain unique(email)
+        # constraint above is case-sensitive, so it neither serves that query
+        # (forcing a seq scan) nor stops two officials being created with
+        # emails that differ only by case (e.g. "Foo@x.com" / "foo@x.com"),
+        # which would make that lookup raise MultipleResultsFound.
+        Index("uq_official_users_email_lower", text("lower(email)"), unique=True),
+    )
 
 
 class OfficialLoginChallenge(Base):
