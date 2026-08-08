@@ -44,9 +44,14 @@ async def run_worker() -> None:
     ) as http_client:
         client = WhatsAppCloudClient(settings, http_client)
         while True:
-            async with AsyncSessionLocal() as session:
-                jobs = await claim_pipeline_jobs(session, limit=settings.worker_batch_size)
-                await session.commit()
+            try:
+                async with AsyncSessionLocal() as session:
+                    jobs = await claim_pipeline_jobs(session, limit=settings.worker_batch_size)
+                    await session.commit()
+            except Exception:
+                logger.exception("worker_claim_failed")
+                await asyncio.sleep(settings.worker_poll_seconds)
+                continue
             for job in jobs:
                 try:
                     if job.stage == "reextract":

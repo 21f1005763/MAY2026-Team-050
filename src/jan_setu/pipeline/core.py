@@ -713,8 +713,18 @@ async def dispatch_grievance(
             await session.commit()
             return FinalizeOutcome(status="registered", human_id=grievance.human_id)
 
+        # Commit (not just flush) the "dispatching" status BEFORE the external
+        # call: sweep_stuck_dispatching only finds rows already durably in this
+        # status, so a crash mid-dispatch must leave that mark behind, or the
+        # sweep built to recover it never sees the row and the complaint is
+        # silently lost. This makes dispatch at-least-once (a retry after a
+        # crash may resend to a department that already got it) rather than
+        # exactly-once.
+        # ponytail: at-least-once via status-before-call, same tradeoff already
+        # accepted for outbound WhatsApp sends. A dispatcher-side idempotency
+        # key is the upgrade path if a real municipal API needs exactly-once.
         await set_grievance_fields(session, grievance_id=grievance_id, status="dispatching")
-        await session.flush()
+        await session.commit()
 
         department = department_for_category(grievance.category or "other")
         dispatcher = get_dispatcher(settings, http_client)
