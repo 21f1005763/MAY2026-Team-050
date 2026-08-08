@@ -562,7 +562,7 @@ async def _send_pipeline_followup_message(
                         mime_type="application/pdf",
                     )
                 except Exception:
-                    logger.warning("pdf_upload_failed", extra={"grievance_id": grievance_id})
+                    logger.exception("pdf_upload_failed", extra={"grievance_id": grievance_id})
             conversation.state = STATE_AWAITING_CONFIRMATION
             body = msg.PDF_CONFIRM.format(summary=summary_text)
             intent = build_confirmation_intent(

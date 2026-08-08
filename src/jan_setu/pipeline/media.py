@@ -99,7 +99,13 @@ async def download_whatsapp_media(
     lookup = await client.get(lookup_url, headers=headers)
     lookup.raise_for_status()
     info = lookup.json()
-    media_url = info["url"]
+    try:
+        media_url = info["url"]
+    except (KeyError, TypeError) as exc:
+        # A 2xx response with no "url" (unexpected shape, media still processing,
+        # etc.) is a provider failure like any other — surface it as the same
+        # exception type callers already catch, instead of an uncaught KeyError.
+        raise httpx.HTTPError(f"WhatsApp media lookup for {media_id!r} returned no url") from exc
     mime_type = info.get("mime_type", "application/octet-stream")
 
     download = await client.get(media_url, headers=headers)

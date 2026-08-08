@@ -57,7 +57,11 @@ async def send_pending(
         await session.commit()
         logger.warning(
             "outbound_giving_up",
-            extra={"reply_kind": message.reply_kind, "attempts": message.attempt_count},
+            extra={
+                "message_id": str(message_id),
+                "reply_kind": message.reply_kind,
+                "attempts": message.attempt_count,
+            },
         )
         return "failed"
 
@@ -120,11 +124,20 @@ async def send_pending(
 
     try:
         response = await client.send_raw(payload)
-    except (httpx.HTTPError, WhatsAppClientUnavailable):
-        # Leave the lease to expire; the worker sweep retries it.
+    except (httpx.HTTPError, WhatsAppClientUnavailable, ValueError) as exc:
+        # ValueError also covers a 2xx response with an unparseable body
+        # (json.JSONDecodeError) — a Graph API failure like any other, not a
+        # local bug. Leave the lease to expire; the worker sweep retries it.
         await mark_outbound(session, message_id=message_id, status="pending")
         await session.commit()
-        logger.warning("outbound_send_failed", extra={"reply_kind": message.reply_kind})
+        logger.warning(
+            "outbound_send_failed",
+            extra={
+                "message_id": str(message_id),
+                "reply_kind": message.reply_kind,
+                "error_type": type(exc).__name__,
+            },
+        )
         return "failed"
 
     await mark_outbound(

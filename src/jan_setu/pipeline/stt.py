@@ -67,7 +67,9 @@ async def transcribe_clip(
         logger.warning("sarvam_transcription_failed")
         return TranscriptionResult(ok=False)
 
-    transcript = body.get("transcript")
+    # A 2xx with an unexpected shape (list, string, etc.) is a provider failure
+    # like any other — degrade instead of an uncaught AttributeError on .get().
+    transcript = body.get("transcript") if isinstance(body, dict) else None
     if not transcript:
         return TranscriptionResult(ok=False)
     return TranscriptionResult(

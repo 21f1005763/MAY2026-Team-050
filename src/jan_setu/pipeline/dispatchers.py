@@ -55,7 +55,10 @@ class MockApiDispatcher:
             )
             response.raise_for_status()
             return response.json()["ref"]
-        except (httpx.HTTPError, KeyError) as exc:
+        except (httpx.HTTPError, KeyError, ValueError) as exc:
+            # ValueError covers a 2xx with an unparseable body (JSONDecodeError)
+            # — route it through DispatchError like any other dispatcher
+            # failure so attempt-counting and eventual give-up still apply.
             raise DispatchError(str(exc)) from exc
 
 

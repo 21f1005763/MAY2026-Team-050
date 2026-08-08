@@ -527,7 +527,15 @@ async def check_image_match(
                 system_prompt=IMAGE_MATCH_SYSTEM_PROMPT,
                 user_content=content,
             )
-        except (httpx.HTTPError, KeyError, IndexError, ValueError):
+        except (httpx.HTTPError, KeyError, IndexError, ValueError) as exc:
+            logger.warning(
+                "image_match_attempt_failed",
+                extra={
+                    "provider": attempt["provider"],
+                    "model": attempt["model"],
+                    "error_type": type(exc).__name__,
+                },
+            )
             continue
         parsed = parse_image_match(raw)
         if parsed is not None:
