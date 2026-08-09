@@ -125,6 +125,13 @@ class GrievanceDraftResponse(BaseModel):
     voice_note_metadata: list[dict[str, Any]] = Field(default_factory=list)
 
 
+class GrievanceConfirmResponse(BaseModel):
+    status: str
+    human_id: str | None
+    duplicate_of_human_id: str | None
+    report_count: int | None
+
+
 class TranscriptionPreview(BaseModel):
     text: str | None = None
     language: str | None = None

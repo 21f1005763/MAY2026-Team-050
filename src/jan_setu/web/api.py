@@ -59,6 +59,7 @@ from jan_setu.repositories import (
     set_grievance_fields,
 )
 from jan_setu.schemas import (
+    GrievanceConfirmResponse,
     GrievanceDetail,
     GrievanceDraftResponse,
     GrievanceEventRead,
@@ -425,14 +426,14 @@ async def replace_photo(
     return await _draft_response(session, grievance_id)
 
 
-@router.post("/{grievance_id}/confirm")
+@router.post("/{grievance_id}/confirm", response_model=GrievanceConfirmResponse)
 async def confirm_draft(
     grievance_id: UUID,
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
     settings: Annotated[Settings, Depends(get_settings)],
     user: Annotated[User, Depends(get_current_user)],
-) -> dict[str, str | int | None]:
+) -> GrievanceConfirmResponse:
     grievance = await get_grievance(session, grievance_id=grievance_id)
     grievance = _require_owner(grievance, user)
     if grievance.status != "awaiting_confirmation":
@@ -443,12 +444,12 @@ async def confirm_draft(
 
     http_client = request.app.state.http_client
     outcome = await finalize_grievance(settings, http_client, grievance_id=grievance_id)
-    return {
-        "status": outcome.status,
-        "human_id": outcome.human_id,
-        "duplicate_of_human_id": outcome.duplicate_of_human_id,
-        "report_count": outcome.report_count,
-    }
+    return GrievanceConfirmResponse(
+        status=outcome.status,
+        human_id=outcome.human_id,
+        duplicate_of_human_id=outcome.duplicate_of_human_id,
+        report_count=outcome.report_count,
+    )
 
 
 @router.get("", response_model=list[GrievanceSummary])
