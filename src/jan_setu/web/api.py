@@ -23,6 +23,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import FileResponse
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from jan_setu.auth import get_current_user
@@ -139,7 +140,9 @@ async def preview_transcription(
     audio: Annotated[UploadFile, File()],
 ) -> TranscriptionPreview:
     del user  # Authentication is required even though preview is not persisted.
-    data = await audio.read()
+    # Cap the read at the limit validate_upload enforces anyway, so an
+    # oversized upload is rejected without first buffering it all into memory.
+    data = await audio.read(settings.max_audio_bytes + 1)
     mime_type = normalize_mime_type(audio.content_type) or "audio/ogg"
     try:
         validate_upload(mime_type=mime_type, size_bytes=len(data), kind="audio", settings=settings)
@@ -154,15 +157,15 @@ async def preview_transcription(
     return TranscriptionPreview(text=result.text, language=result.detected_language, status="final")
 
 
-@router.post("/draft", response_model=GrievanceDraftResponse)
+@router.post("/draft", response_model=GrievanceDraftResponse, status_code=status.HTTP_201_CREATED)
 async def create_draft(
     session: Annotated[AsyncSession, Depends(get_session)],
     settings: Annotated[Settings, Depends(get_settings)],
     user: Annotated[User, Depends(get_current_user)],
-    lat: Annotated[float, Form()],
-    lon: Annotated[float, Form()],
-    text: Annotated[str | None, Form()] = None,
-    landmark: Annotated[str | None, Form()] = None,
+    lat: Annotated[float, Form(ge=-90, le=90)],
+    lon: Annotated[float, Form(ge=-180, le=180)],
+    text: Annotated[str | None, Form(max_length=5000)] = None,
+    landmark: Annotated[str | None, Form(max_length=300)] = None,
     photo: Annotated[UploadFile | None, File()] = None,
     audio: Annotated[list[UploadFile] | None, File()] = None,
     audio_metadata: Annotated[list[str] | None, Form()] = None,
@@ -180,7 +183,7 @@ async def create_draft(
     photo_bytes: bytes | None = None
     photo_mime: str | None = None
     if photo is not None and photo.filename:
-        photo_bytes = await photo.read()
+        photo_bytes = await photo.read(settings.max_image_bytes + 1)
         photo_mime = photo.content_type or "image/jpeg"
         try:
             validate_upload(
@@ -217,7 +220,7 @@ async def create_draft(
     for clip, metadata in zip(audio or [], parsed_audio_metadata, strict=True):
         if not clip.filename:
             continue
-        data = await clip.read()
+        data = await clip.read(settings.max_audio_bytes + 1)
         mime_type = normalize_mime_type(clip.content_type) or "audio/ogg"
         try:
             validate_upload(
@@ -255,8 +258,14 @@ async def create_draft(
 
     issue_messages = list(text_messages)
     for data, mime_type, metadata in audio_clips:
-        path = save_upload(
-            settings, grievance_id=str(grievance.id), name=new_filename(mime_type), data=data
+        # save_upload() does synchronous disk I/O; offload to a worker thread
+        # so it doesn't block the event loop for other concurrent requests.
+        path = await run_in_threadpool(
+            save_upload,
+            settings,
+            grievance_id=str(grievance.id),
+            name=new_filename(mime_type),
+            data=data,
         )
         issue_messages.append(
             {
@@ -269,7 +278,8 @@ async def create_draft(
 
     photo_path = None
     if photo_bytes is not None:
-        photo_path = save_upload(
+        photo_path = await run_in_threadpool(
+            save_upload,
             settings,
             grievance_id=str(grievance.id),
             name=new_filename(photo_mime),
@@ -383,15 +393,19 @@ async def replace_photo(
     grievance = await get_grievance(session, grievance_id=grievance_id)
     _require_owner(grievance, user)
 
-    data = await photo.read()
+    data = await photo.read(settings.max_image_bytes + 1)
     mime_type = photo.content_type or "image/jpeg"
     try:
         validate_upload(mime_type=mime_type, size_bytes=len(data), kind="image", settings=settings)
     except (UploadTooLarge, UploadTypeNotAllowed) as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    path = save_upload(
-        settings, grievance_id=str(grievance_id), name=new_filename(mime_type), data=data
+    path = await run_in_threadpool(
+        save_upload,
+        settings,
+        grievance_id=str(grievance_id),
+        name=new_filename(mime_type),
+        data=data,
     )
     await set_grievance_fields(
         session, grievance_id=grievance_id, photo_path=path, photo_media_id=None

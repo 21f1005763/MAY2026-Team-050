@@ -132,8 +132,8 @@ class TranscriptionPreview(BaseModel):
 
 
 class GrievanceReviewPatch(BaseModel):
-    category_id: str | None = None
-    asset_scope: str | None = None
+    category_id: str | None = Field(default=None, max_length=128)
+    asset_scope: str | None = Field(default=None, max_length=32)
     summary: str | None = Field(default=None, max_length=600)
     clarification_answer: str | None = Field(default=None, max_length=2000)
 
