@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Jan Setu API
-  version: 0.1.0
+  version: 0.2.0
   description: 'Jan Setu is a civic complaint platform: citizens file complaints over a React web portal
     or a WhatsApp bot, both backed by this shared FastAPI service. This spec is generated directly from
     the live FastAPI route definitions (`app.openapi()`), then annotated with the user story each operation
@@ -860,13 +860,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties:
-                  anyOf:
-                  - type: string
-                  - type: integer
-                  - type: 'null'
-                title: Response Confirm Draft Api Grievances  Grievance Id  Confirm Post
+                $ref: '#/components/schemas/GrievanceConfirmResponse'
         '422':
           description: Validation Error
           content:
@@ -898,8 +892,12 @@ paths:
       security:
       - citizenBearerAuth: []
       description: 'Finalizes a grievance that is awaiting_confirmation: routes it into the aggregation
-        window (non-priority categories) or straight to dispatch (priority categories) per the taxonomy
-        routing policy.'
+        window (non-priority categories), straight to dispatch (priority categories), or straight to
+        official review (redirect/needs-review dispositions) per the taxonomy routing policy. If a
+        duplicate is found within the dedup radius/category during this step, the new grievance is
+        merged into the existing one instead (`status: duplicate`, `duplicate_of_human_id` and the
+        master''s updated `report_count` are returned) so the department gets one consolidated report
+        per issue.'
   /api/grievances:
     get:
       tags:
@@ -1556,6 +1554,40 @@ components:
       - created_at
       - updated_at
       title: ContactRead
+    GrievanceConfirmResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+          description: 'One of: registered (routed to official review or dispatched),
+            duplicate (merged into an existing report), pending_window (holding in
+            the aggregation window).'
+        human_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Human Id
+        duplicate_of_human_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Duplicate Of Human Id
+          description: Set only when status is duplicate; the human_id of the master
+            grievance this one was merged into.
+        report_count:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Report Count
+          description: Set only when status is duplicate; the master grievance's
+            updated count of citizens reporting the same issue.
+      type: object
+      required:
+      - status
+      - human_id
+      - duplicate_of_human_id
+      - report_count
+      title: GrievanceConfirmResponse
     GrievanceDetail:
       properties:
         id:
