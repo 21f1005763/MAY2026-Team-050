@@ -223,6 +223,7 @@ def _grievance(**overrides):
         "user_id": None,
         "human_id": "JS-20260101-00001",
         "status": "draft",
+        "photo_path": None,
         "category": "pothole_surface_damage",
         "category_id": "pothole_surface_damage",
         "priority": "normal",
@@ -711,6 +712,25 @@ class TestConfirmDraft:
                 )
         assert r.status_code == 400
 
+    def test_photo_mismatch_is_accepted_then_finalized(self):
+        user = _user()
+        grievance = _grievance(user_id=user.id, status="photo_mismatch")
+        outcome = FinalizeOutcome(status="submitted", human_id=grievance.human_id)
+        app.dependency_overrides[get_current_user] = lambda: user
+        app.dependency_overrides[get_session] = lambda: AsyncMock()
+        with (
+            patch("jan_setu.web.api.get_grievance", AsyncMock(return_value=grievance)),
+            patch("jan_setu.web.api.accept_photo_mismatch", AsyncMock()) as mock_accept,
+            patch("jan_setu.web.api.finalize_grievance", AsyncMock(return_value=outcome)),
+        ):
+            with TestClient(app) as client:
+                r = client.post(
+                    f"/api/grievances/{grievance.id}/confirm",
+                    headers={"Authorization": "Bearer irrelevant"},
+                )
+        assert r.status_code == 200
+        mock_accept.assert_awaited_once()
+
     def test_success_returns_outcome(self):
         user = _user()
         grievance = _grievance(user_id=user.id, status="awaiting_confirmation")
@@ -899,6 +919,59 @@ class TestDownloadPdf:
                 )
         assert r.status_code == 200
         assert r.content == b"%PDF-1.4 fake pdf bytes"
+
+
+class TestDownloadPhoto:
+    def test_requires_authentication(self):
+        gid = str(uuid.uuid4())
+        with TestClient(app) as client:
+            r = client.get(f"/api/grievances/{gid}/photo")
+        assert r.status_code == 401
+
+    def test_no_photo_returns_404(self):
+        user = _user()
+        grievance = _grievance(user_id=user.id, photo_path=None)
+        app.dependency_overrides[get_current_user] = lambda: user
+        app.dependency_overrides[get_session] = lambda: AsyncMock()
+        with patch("jan_setu.web.api.get_grievance", AsyncMock(return_value=grievance)):
+            with TestClient(app) as client:
+                r = client.get(
+                    f"/api/grievances/{grievance.id}/photo",
+                    headers={"Authorization": "Bearer irrelevant"},
+                )
+        assert r.status_code == 404
+
+    def test_another_users_photo_is_not_readable(self):
+        # The image is personal data: owning the ticket id must not be enough.
+        owner, intruder = _user(), _user()
+        grievance = _grievance(user_id=owner.id, photo_path="/tmp/whatever.jpg")
+        app.dependency_overrides[get_current_user] = lambda: intruder
+        app.dependency_overrides[get_session] = lambda: AsyncMock()
+        with patch("jan_setu.web.api.get_grievance", AsyncMock(return_value=grievance)):
+            with TestClient(app) as client:
+                r = client.get(
+                    f"/api/grievances/{grievance.id}/photo",
+                    headers={"Authorization": "Bearer irrelevant"},
+                )
+        assert r.status_code == 404
+
+    def test_success_streams_the_image_with_its_media_type(self, upload_settings, tmp_path):
+        user = _user()
+        photo = tmp_path / "evidence.jpg"
+        photo.write_bytes(b"\xff\xd8\xff fake jpeg")
+        grievance = _grievance(user_id=user.id, photo_path=str(photo))
+        app.dependency_overrides[get_current_user] = lambda: user
+        app.dependency_overrides[get_session] = lambda: AsyncMock()
+        app.dependency_overrides[get_settings] = lambda: upload_settings
+        with patch("jan_setu.web.api.get_grievance", AsyncMock(return_value=grievance)):
+            with TestClient(app) as client:
+                r = client.get(
+                    f"/api/grievances/{grievance.id}/photo",
+                    headers={"Authorization": "Bearer irrelevant"},
+                )
+        assert r.status_code == 200
+        assert r.headers["content-type"].startswith("image/jpeg")
+        assert r.content == b"\xff\xd8\xff fake jpeg"
 
 
 # ===================================================================

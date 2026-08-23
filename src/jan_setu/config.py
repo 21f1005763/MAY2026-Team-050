@@ -108,6 +108,10 @@ class Settings(BaseSettings):
     smtp_host: str = "localhost"
     smtp_port: int = 1025
     smtp_from: str = "no-reply@jan-setu.local"
+    # Unset (Mailpit locally): plain SMTP, no STARTTLS/login. Set both to
+    # authenticate over STARTTLS, e.g. OCI Email Delivery in cloud dev/prod.
+    smtp_username: str = ""
+    smtp_password: SecretStr = SecretStr("")
 
     # File uploads (voice clips, photos, generated PDFs).
     upload_dir: str = "./data/uploads"
@@ -121,6 +125,10 @@ class Settings(BaseSettings):
     verification_code_ttl_minutes: int = 10
     verification_max_per_hour: int = 3
     official_code_max_per_hour: int = 5
+    # Fixed official OTP for local demos, so the console can be opened without
+    # reading the mailbox. Unset by default; accepted only in development/test
+    # and boot fails outright if it is set in staging/production.
+    official_dev_login_code: SecretStr | None = None
 
     # Web frontend.
     cors_origins: str = "http://localhost:5173"
@@ -138,6 +146,17 @@ class Settings(BaseSettings):
             )
         return self
 
+    @model_validator(mode="after")
+    def reject_dev_login_code_outside_dev(self) -> "Settings":
+        # Fail fast at boot rather than silently ignoring the value: a deploy
+        # that still carries the demo code must not start at all.
+        if self.official_dev_login_code is not None and self.environment not in {
+            "development",
+            "test",
+        }:
+            raise ValueError("OFFICIAL_DEV_LOGIN_CODE must not be set outside development/test")
+        return self
+
     @field_validator(
         "whatsapp_app_secret",
         "whatsapp_access_token",
@@ -145,6 +164,7 @@ class Settings(BaseSettings):
         "sarvam_api_key",
         "groq_api_key",
         "openrouter_api_key",
+        "official_dev_login_code",
         mode="before",
     )
     @classmethod
@@ -228,6 +248,20 @@ def get_settings() -> Settings:
     return Settings()
 
 
+# Third-party loggers that emit per-operation INFO chatter. fpdf2 subsets the
+# packaged Noto fonts on every generated PDF, and fontTools narrates each table
+# it touches -- roughly 20 INFO lines per complaint, which buries the worker's
+# own logs. Raised to WARNING unless the app itself is running at DEBUG.
+NOISY_LIBRARY_LOGGERS = (
+    "fontTools",
+    "fpdf",
+    "PIL",
+    "httpx",
+    "httpcore",
+    "python_multipart",
+)
+
+
 def configure_logging(
     level: str,
     *,
@@ -245,3 +279,9 @@ def configure_logging(
     root_logger = logging.getLogger()
     root_logger.handlers = [handler]
     root_logger.setLevel(log_level)
+
+    # Set explicitly in both directions so repeated calls are idempotent and a
+    # later DEBUG run is not silenced by an earlier INFO one.
+    library_level = logging.NOTSET if log_level <= logging.DEBUG else logging.WARNING
+    for name in NOISY_LIBRARY_LOGGERS:
+        logging.getLogger(name).setLevel(library_level)

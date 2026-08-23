@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import jwt
 import pytest
+from pydantic import ValidationError
 from fastapi.testclient import TestClient
 
 from jan_setu.config import Settings, get_settings
@@ -41,6 +42,7 @@ def _grievance(**overrides):
         "human_id": "JS-20260101-00001",
         "status": "awaiting_confirmation",
         "review_status": "pending_official",
+        "photo_path": None,
         "category_id": "pothole_surface_damage",
         "category": "pothole_surface_damage",
         "department_key": "public_works",
@@ -55,6 +57,7 @@ def _grievance(**overrides):
         "structured_facts": {},
         "routing_snapshot": {},
         "flags": [],
+        "image_match_status": "none",
         "created_at": datetime.now(timezone.utc),
         "state_version": 0,
     }
@@ -244,7 +247,7 @@ class TestRequestOfficialCode:
             )
         assert r.status_code == 422
 
-    def test_unknown_email_returns_generic_response_without_dev_code(self):
+    def test_unknown_email_returns_generic_response_and_sends_no_email(self):
         challenge = SimpleNamespace(id=uuid4())
         with (
             patch("jan_setu.officials.get_official_by_email", AsyncMock(return_value=None)),
@@ -265,11 +268,10 @@ class TestRequestOfficialCode:
                     json={"email": "unknown@example.gov"},
                 )
         assert r.status_code == 200
-        body = r.json()
-        assert body["dev_code"] is None
+        assert set(r.json()) == {"status", "challenge_id"}
         mock_send.assert_not_called()
 
-    def test_known_email_in_development_returns_dev_code_and_sends_email(self):
+    def test_known_email_sends_email_and_never_returns_the_code(self):
         official = _official(email="known@example.gov")
         challenge = SimpleNamespace(id=uuid4())
         dev_settings = _settings(environment="development")
@@ -293,11 +295,10 @@ class TestRequestOfficialCode:
                     json={"email": "known@example.gov"},
                 )
         assert r.status_code == 200
-        body = r.json()
-        assert body["dev_code"] is not None
+        assert set(r.json()) == {"status", "challenge_id"}
         mock_send.assert_called_once()
 
-    def test_known_email_in_production_omits_dev_code(self):
+    def test_production_response_never_contains_the_code(self):
         official = _official(email="known@example.gov")
         challenge = SimpleNamespace(id=uuid4())
         prod_settings = _settings(
@@ -324,7 +325,7 @@ class TestRequestOfficialCode:
                     json={"email": "known@example.gov"},
                 )
         assert r.status_code == 200
-        assert r.json()["dev_code"] is None
+        assert set(r.json()) == {"status", "challenge_id"}
         mock_send.assert_called_once()
 
     def test_rate_limited_email_returns_429_without_creating_challenge(self):
@@ -363,6 +364,68 @@ class TestRequestOfficialCode:
 class TestVerifyOfficialCode:
     def _body(self, challenge_id=None, code="123456"):
         return {"challenge_id": str(challenge_id or uuid4()), "code": code}
+
+    def _live_challenge(self, code="123456", official_user_id=None):
+        return SimpleNamespace(
+            id=uuid4(),
+            consumed_at=None,
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),
+            attempt_count=0,
+            code_hash=_hash(code),
+            official_user_id=official_user_id or uuid4(),
+        )
+
+    def test_dev_login_code_is_accepted_in_development(self):
+        official = _official()
+        challenge = self._live_challenge(official_user_id=official.id)
+        settings = _settings(environment="development", official_dev_login_code="000000")
+        with (
+            patch("jan_setu.officials.get_official_challenge", AsyncMock(return_value=challenge)),
+            patch("jan_setu.officials.get_official", AsyncMock(return_value=official)),
+            patch("jan_setu.officials.add_official_audit", AsyncMock()),
+        ):
+            app.dependency_overrides[get_session] = lambda: AsyncMock()
+            app.dependency_overrides[get_settings] = lambda: settings
+            with TestClient(app) as client:
+                r = client.post("/api/official/auth/verify", json=self._body(code="000000"))
+        assert r.status_code == 200
+        assert r.json()["access_token"]
+
+    def test_dev_login_code_still_burns_an_attempt(self):
+        # Otherwise a leaked demo code could be retried without limit.
+        official = _official()
+        challenge = self._live_challenge(official_user_id=official.id)
+        settings = _settings(environment="development", official_dev_login_code="000000")
+        with (
+            patch("jan_setu.officials.get_official_challenge", AsyncMock(return_value=challenge)),
+            patch("jan_setu.officials.get_official", AsyncMock(return_value=official)),
+            patch("jan_setu.officials.add_official_audit", AsyncMock()),
+        ):
+            app.dependency_overrides[get_session] = lambda: AsyncMock()
+            app.dependency_overrides[get_settings] = lambda: settings
+            with TestClient(app) as client:
+                client.post("/api/official/auth/verify", json=self._body(code="000000"))
+        assert challenge.attempt_count == 1
+
+    def test_dev_login_code_does_not_bypass_an_unknown_official(self):
+        # The escape hatch replaces the code check only, never the account check.
+        challenge = self._live_challenge()
+        challenge.official_user_id = None
+        settings = _settings(environment="development", official_dev_login_code="000000")
+        with patch("jan_setu.officials.get_official_challenge", AsyncMock(return_value=challenge)):
+            app.dependency_overrides[get_session] = lambda: AsyncMock()
+            app.dependency_overrides[get_settings] = lambda: settings
+            with TestClient(app) as client:
+                r = client.post("/api/official/auth/verify", json=self._body(code="000000"))
+        assert r.status_code == 401
+
+    def test_settings_refuse_to_load_dev_login_code_in_production(self):
+        with pytest.raises(ValidationError):
+            _settings(
+                environment="production",
+                jwt_secret="production-secret-at-least-32-bytes-long",
+                official_dev_login_code="000000",
+            )
 
     def test_unknown_challenge_returns_401(self):
         with patch("jan_setu.officials.get_official_challenge", AsyncMock(return_value=None)):

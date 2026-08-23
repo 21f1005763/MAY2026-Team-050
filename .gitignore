@@ -11,6 +11,8 @@ wheels/
 
 # Local environment and runtime data
 .env
+.env.bak*
+.env.*.bak
 .ruff_cache/
 .pytest_cache/
 .coverage
@@ -35,3 +37,6 @@ data/
 DESIGN.md
 PRODUCT.md
 .impeccable/
+
+# Hi-res art sources: only the exported webp in frontend/public/ ships.
+docs/assets-src/

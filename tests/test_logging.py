@@ -4,7 +4,7 @@ import logging
 
 from fastapi.testclient import TestClient
 
-from jan_setu.config import configure_logging, get_settings
+from jan_setu.config import NOISY_LIBRARY_LOGGERS, configure_logging, get_settings
 from jan_setu.main import app
 
 
@@ -46,3 +46,20 @@ def test_http_requests_get_request_id_header_and_log(caplog):
         and record.status_code == 200
         for record in caplog.records
     )
+
+
+def test_noisy_library_loggers_are_quieted_at_info():
+    # fpdf2 subsets the packaged Noto fonts on every PDF and fontTools narrates
+    # each table -- ~400 INFO lines per complaint, which buried the worker log.
+    configure_logging("INFO", stream=io.StringIO())
+    for name in NOISY_LIBRARY_LOGGERS:
+        assert logging.getLogger(name).level == logging.WARNING
+
+
+def test_noisy_library_loggers_are_restored_at_debug():
+    # Must be idempotent in both directions: an earlier INFO run cannot leave a
+    # later DEBUG run silenced, or font debugging becomes impossible.
+    configure_logging("INFO", stream=io.StringIO())
+    configure_logging("DEBUG", stream=io.StringIO())
+    for name in NOISY_LIBRARY_LOGGERS:
+        assert logging.getLogger(name).level == logging.NOTSET

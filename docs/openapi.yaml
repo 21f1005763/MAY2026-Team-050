@@ -1304,6 +1304,37 @@ paths:
       - officialBearerAuth: []
       description: Full detail of one grievance, scoped to the official's jurisdiction/department access.
         Also records a 'view' audit entry.
+  /api/official/grievances/{grievance_id}/photo:
+    get:
+      tags:
+      - official operations
+      summary: Official Grievance Photo
+      description: 'Citizen evidence photo for the reviewing official. Scoped by the same
+
+        jurisdiction check as the case itself, and recorded as an evidence view --
+
+        the login copy promises that evidence access is audited.'
+      operationId: official_grievance_photo_api_official_grievances__grievance_id__photo_get
+      parameters:
+      - name: grievance_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Grievance Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/official/grievances/{grievance_id}/actions:
     post:
       tags:
@@ -2185,11 +2216,6 @@ components:
           type: string
           format: uuid
           title: Challenge Id
-        dev_code:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Dev Code
       type: object
       required:
       - challenge_id

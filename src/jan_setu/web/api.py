@@ -6,6 +6,7 @@ adapters over the same orchestrator, so "what happens to a filed complaint" is
 implemented exactly once.
 """
 
+import mimetypes
 import json
 import logging
 from typing import Annotated
@@ -30,7 +31,7 @@ from jan_setu.auth import get_current_user
 from jan_setu.config import Settings, get_settings
 from jan_setu.db import get_session
 from jan_setu.db.models import Grievance, User
-from jan_setu.pipeline import finalize_grievance, recheck_image
+from jan_setu.pipeline import accept_photo_mismatch, finalize_grievance, recheck_image
 from jan_setu.pipeline.stt import transcribe_clip
 from jan_setu.pipeline.media import (
     UploadTooLarge,
@@ -116,6 +117,7 @@ async def _draft_response(session: AsyncSession, grievance_id: UUID) -> Grievanc
         image_match_status=grievance.image_match_status,
         flags=list(grievance.flags or []),
         pdf_url=f"/api/grievances/{grievance.id}/pdf" if grievance.pdf_path else None,
+        photo_url=f"/api/grievances/{grievance.id}/photo" if grievance.photo_path else None,
         taxonomy_version=grievance.taxonomy_version,
         category_id=grievance.category_id,
         category_label=category.label if grievance.category_id else None,
@@ -436,13 +438,18 @@ async def confirm_draft(
 ) -> GrievanceConfirmResponse:
     grievance = await get_grievance(session, grievance_id=grievance_id)
     grievance = _require_owner(grievance, user)
-    if grievance.status != "awaiting_confirmation":
+    if grievance.status not in ("awaiting_confirmation", "photo_mismatch"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Cannot confirm a grievance in status {grievance.status!r}",
         )
 
     http_client = request.app.state.http_client
+    if grievance.status == "photo_mismatch":
+        # The mismatch warning is advisory: the citizen may file anyway. Move to
+        # awaiting_confirmation (and build the receipt the pipeline skipped)
+        # before finalizing, keeping the mismatch on record for the official.
+        await accept_photo_mismatch(grievance_id, settings, http_client)
     outcome = await finalize_grievance(settings, http_client, grievance_id=grievance_id)
     return GrievanceConfirmResponse(
         status=outcome.status,
@@ -493,6 +500,7 @@ async def get_grievance_detail(
         dispatch_ref=grievance.dispatch_ref,
         events=[GrievanceEventRead.model_validate(event) for event in events],
         pdf_url=f"/api/grievances/{grievance.id}/pdf" if grievance.pdf_path else None,
+        photo_url=f"/api/grievances/{grievance.id}/photo" if grievance.photo_path else None,
         category_id=grievance.category_id,
         category_label=category.label if grievance.category_id else None,
         domain_label=DOMAIN_LABELS.get(category.parent_key) if grievance.category_id else None,
@@ -531,6 +539,33 @@ async def stream_voice_note(
             status_code=status.HTTP_404_NOT_FOUND, detail="Voice note is unavailable"
         )
     return FileResponse(audio_path, media_type=message.get("mime_type") or "audio/webm")
+
+
+@router.get("/{grievance_id}/photo")
+async def download_photo(
+    grievance_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> FileResponse:
+    """The citizen's own evidence photo. Same ownership check as the PDF -- the
+    image is personal data and must never be readable by ticket id alone."""
+    grievance = await get_grievance(session, grievance_id=grievance_id)
+    grievance = _require_owner(grievance, user)
+    if not grievance.photo_path:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No photo attached")
+    photo_path = artifact_path(settings, grievance.photo_path)
+    if not photo_path.is_file():
+        logger.warning(
+            "grievance_photo_missing",
+            extra={"grievance_id": str(grievance_id), "photo_path": str(photo_path)},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Photo artifact is unavailable"
+        )
+    return FileResponse(
+        photo_path, media_type=mimetypes.guess_type(photo_path.name)[0] or "image/jpeg"
+    )
 
 
 @router.get("/{grievance_id}/pdf")

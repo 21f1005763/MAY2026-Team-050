@@ -53,9 +53,9 @@ describe("OfficialLogin", () => {
     expect(officialToken()).toBe("existing-token");
   });
 
-  it("requests a one-time code and shows the dev code, disabling the button while empty/busy", async () => {
+  it("requests a one-time code without ever revealing it, disabling the button while empty/busy", async () => {
     const user = userEvent.setup();
-    let resolveRequest!: (value: { challenge_id: string; dev_code: string }) => void;
+    let resolveRequest!: (value: { challenge_id: string }) => void;
     mockedApiPostJson.mockReturnValueOnce(
       new Promise((resolve) => {
         resolveRequest = resolve;
@@ -74,15 +74,17 @@ describe("OfficialLogin", () => {
     await user.click(sendButton);
     expect(screen.getByRole("button", { name: "Requesting…" })).toBeDisabled();
 
-    resolveRequest({ challenge_id: "c1", dev_code: "123456" });
+    resolveRequest({ challenge_id: "c1" });
 
     await waitFor(() => expect(screen.getByLabelText("One-time code")).toBeInTheDocument());
-    expect(screen.getByText("123456")).toBeInTheDocument();
+    // The OTP must never reach the browser: only emailed guidance is shown.
+    expect(screen.queryByText(/\d{6}/)).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/emailed a 6-digit code/i);
   });
 
   it("verifies the code, stores the session, and navigates to /official", async () => {
     const user = userEvent.setup();
-    mockedApiPostJson.mockResolvedValueOnce({ challenge_id: "c1", dev_code: "123456" });
+    mockedApiPostJson.mockResolvedValueOnce({ challenge_id: "c1" });
     mockedApiPostJson.mockResolvedValueOnce({
       access_token: "tok",
       official: { name: "A", role: "R", jurisdiction_id: "J" },

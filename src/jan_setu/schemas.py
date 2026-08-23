@@ -110,6 +110,7 @@ class GrievanceDraftResponse(BaseModel):
     image_match_status: str | None
     flags: list[str]
     pdf_url: str | None
+    photo_url: str | None = None
     taxonomy_version: str | None = None
     category_id: str | None = None
     category_label: str | None = None
@@ -158,6 +159,7 @@ class GrievanceDetail(GrievanceSummary):
     dispatch_ref: str | None
     events: list[GrievanceEventRead]
     pdf_url: str | None
+    photo_url: str | None = None
     category_id: str | None = None
     category_label: str | None = None
     domain_label: str | None = None

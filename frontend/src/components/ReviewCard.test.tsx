@@ -205,4 +205,30 @@ describe("ReviewCard", () => {
     const btn = screen.getByText("Filing complaint…");
     expect(btn).toBeDisabled();
   });
+
+  it("shows actual contradiction reasons when mismatched and contradictions present", () => {
+    const props = baseProps({
+      image_match_status: "mismatched",
+      structured_facts: {
+        summary: "Water pipe burst",
+        contradictions: ["Photo shows a water pipe burst, unrelated to reported computer failures"],
+      },
+    });
+    renderWithProviders(<ReviewCard {...props} />);
+
+    expect(screen.getByText("Photo evidence may conflict with the description.")).toBeInTheDocument();
+    expect(screen.getByText("Photo shows a water pipe burst, unrelated to reported computer failures")).toBeInTheDocument();
+  });
+
+  it("falls back to generic mismatch body when contradictions array is empty", () => {
+    const props = baseProps({
+      image_match_status: "mismatched",
+      structured_facts: { summary: "Something", contradictions: [] },
+    });
+    renderWithProviders(<ReviewCard {...props} />);
+
+    expect(screen.getByText("Photo evidence may conflict with the description.")).toBeInTheDocument();
+    expect(screen.getByText("This never proves your report is false. Replace the photo or continue; an official can review the original evidence.")).toBeInTheDocument();
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+  });
 });

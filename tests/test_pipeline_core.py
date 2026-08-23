@@ -20,6 +20,7 @@ import httpx
 import pytest
 
 from jan_setu.config import Settings
+from jan_setu.pipeline.taxonomy import DEMO_JURISDICTION_ID
 from jan_setu.pipeline import core
 from jan_setu.pipeline.classify import StructuredExtraction
 from jan_setu.pipeline.dedup import DuplicateMatch
@@ -53,6 +54,11 @@ class FakeAsyncSession:
     async def get(self, _model, _id):
         return self._contact
 
+    async def execute(self, _statement):
+        # No jurisdiction_routes rows: routing falls back to the bundled
+        # profile, which is the behaviour these tests were written against.
+        return SimpleNamespace(scalars=lambda: SimpleNamespace(all=lambda: []))
+
 
 class FakeSessionCM:
     def __init__(self, session):
@@ -80,6 +86,7 @@ def _grievance(**overrides):
         id=uuid.uuid4(),
         human_id="JS-20260812-00001",
         contact_id=uuid.uuid4(),
+        jurisdiction_id=DEMO_JURISDICTION_ID,
         issue_messages=[],
         issue_text="Pothole outside my house",
         location_address="MG Road",
@@ -228,6 +235,27 @@ def test_fetch_photo_returns_none_on_local_read_failure(tmp_path):
     )
     assert data is None
     assert mime is None
+
+
+def test_fetch_photo_resolves_a_path_stored_under_a_different_upload_root(tmp_path):
+    """The host API stores "data/uploads/<id>/<file>" relative to its own root;
+    the worker container runs with upload_dir="/data/uploads". Reading the stored
+    string directly resolves to nothing there, which silently dropped every photo
+    from extraction and from the PDF. The path must be re-rooted."""
+    worker_root = tmp_path / "container" / "data" / "uploads"
+    (worker_root / "abc123").mkdir(parents=True)
+    (worker_root / "abc123" / "evidence.jpg").write_bytes(b"real-photo-bytes")
+
+    settings = _settings(upload_dir=str(worker_root))
+    stored_by_the_other_process = "data/uploads/abc123/evidence.jpg"
+
+    data, mime = asyncio.run(
+        core._fetch_photo(
+            settings, object(), photo_media_id=None, photo_path=stored_by_the_other_process
+        )
+    )
+    assert data == b"real-photo-bytes"
+    assert mime == "image/jpeg"
 
 
 def test_fetch_photo_returns_none_when_neither_path_nor_media_id():
@@ -574,7 +602,9 @@ def test_recheck_image_photo_matches(monkeypatch):
         core, "_fetch_photo", AsyncMock(return_value=(b"photo-bytes", "image/jpeg"))
     )
     monkeypatch.setattr(
-        core, "check_image_match", AsyncMock(return_value=SimpleNamespace(matches=True))
+        core,
+        "check_image_match",
+        AsyncMock(return_value=SimpleNamespace(matches=True, degraded=False)),
     )
 
     result = asyncio.run(core.recheck_image(grievance.id, _settings(), object()))
@@ -591,13 +621,46 @@ def test_recheck_image_photo_mismatched_skips_pdf(monkeypatch):
         core, "_fetch_photo", AsyncMock(return_value=(b"photo-bytes", "image/jpeg"))
     )
     monkeypatch.setattr(
-        core, "check_image_match", AsyncMock(return_value=SimpleNamespace(matches=False))
+        core,
+        "check_image_match",
+        AsyncMock(return_value=SimpleNamespace(matches=False, degraded=False)),
     )
 
     result = asyncio.run(core.recheck_image(grievance.id, _settings(), object()))
 
     assert result.status == "photo_mismatch"
     assert result.image_match_status == "mismatched"
+    build_pdf.assert_not_awaited()
+
+
+def test_accept_photo_mismatch_keeps_photo_and_builds_pdf(monkeypatch):
+    grievance = _grievance(
+        status="photo_mismatch", image_match_status="mismatched", photo_media_id="media-1"
+    )
+    set_fields, add_event, build_pdf = _patch_grievance_flow(monkeypatch, grievance)
+    _patch_session(monkeypatch)
+    monkeypatch.setattr(
+        core, "_fetch_photo", AsyncMock(return_value=(b"photo-bytes", "image/jpeg"))
+    )
+
+    asyncio.run(core.accept_photo_mismatch(grievance.id, _settings(), object()))
+
+    kwargs = set_fields.call_args.kwargs
+    assert kwargs["status"] == "awaiting_confirmation"
+    assert "photo_mismatch_accepted" in kwargs["flags"]
+    assert "image_match_status" not in kwargs  # mismatch stays on record
+    assert build_pdf.await_args.args[-1] == b"photo-bytes"
+    add_event.assert_awaited_once()
+
+
+def test_accept_photo_mismatch_is_noop_in_other_status(monkeypatch):
+    grievance = _grievance(status="awaiting_confirmation")
+    set_fields, _add_event, build_pdf = _patch_grievance_flow(monkeypatch, grievance)
+    _patch_session(monkeypatch)
+
+    asyncio.run(core.accept_photo_mismatch(grievance.id, _settings(), object()))
+
+    set_fields.assert_not_awaited()
     build_pdf.assert_not_awaited()
 
 
