@@ -298,6 +298,9 @@ async def create_draft(
     )
     await enqueue_pipeline_job(session, grievance_id=grievance.id)
     await session.commit()
+    logger.info(
+        "grievance_created", extra={"grievance_id": str(grievance.id), "user_id": str(user.id)}
+    )
     return await _draft_response(session, grievance.id)
 
 
@@ -381,6 +384,14 @@ async def update_review(
             key_suffix=str(grievance.state_version + 1),
         )
     await session.commit()
+    logger.info(
+        "grievance_review_updated",
+        extra={
+            "grievance_id": str(grievance.id),
+            "user_id": str(user.id),
+            "review_status": policy.needs_official_review,
+        },
+    )
     return await _draft_response(session, grievance.id)
 
 
@@ -425,6 +436,10 @@ async def replace_photo(
             detail="Photo re-check failed; please try again.",
         ) from None
 
+    logger.info(
+        "grievance_photo_updated",
+        extra={"grievance_id": str(grievance_id), "user_id": str(user.id)},
+    )
     return await _draft_response(session, grievance_id)
 
 
@@ -451,6 +466,14 @@ async def confirm_draft(
         # before finalizing, keeping the mismatch on record for the official.
         await accept_photo_mismatch(grievance_id, settings, http_client)
     outcome = await finalize_grievance(settings, http_client, grievance_id=grievance_id)
+    logger.info(
+        "grievance_confirmed",
+        extra={
+            "grievance_id": str(grievance_id),
+            "user_id": str(user.id),
+            "status": outcome.status,
+        },
+    )
     return GrievanceConfirmResponse(
         status=outcome.status,
         human_id=outcome.human_id,

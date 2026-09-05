@@ -1130,6 +1130,8 @@ def test_mock_api_dispatcher_malformed_json_raises_dispatch_error():
     from jan_setu.pipeline.dispatchers import MockApiDispatcher
 
     class Response:
+        status_code = 200
+
         def raise_for_status(self):
             return None
 

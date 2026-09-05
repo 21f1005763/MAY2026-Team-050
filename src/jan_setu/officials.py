@@ -118,6 +118,7 @@ async def require_official(
 ) -> OfficialUser:
     authorization = request.headers.get("Authorization", "")
     if not authorization.startswith("Bearer "):
+        logger.warning("official_token_rejected", extra={"reason": "missing_token"})
         raise HTTPException(status_code=401, detail="Missing official access token")
     try:
         payload = jwt.decode(
@@ -127,9 +128,14 @@ async def require_official(
             audience=OFFICIAL_TOKEN_AUDIENCE,
         )
     except jwt.PyJWTError as exc:
+        logger.warning("official_token_rejected", extra={"reason": "invalid_signature_or_expired"})
         raise HTTPException(status_code=401, detail="Invalid official access token") from exc
     official = await get_official(session, official_id=payload["sub"])
     if official is None or not official.active or official.role not in OFFICIAL_ROLES:
+        logger.warning(
+            "official_token_rejected",
+            extra={"reason": "official_not_found_or_inactive", "official_id": payload.get("sub")},
+        )
         raise HTTPException(status_code=401, detail="Unknown official")
     return official
 
@@ -209,9 +215,17 @@ async def verify_official_code(
         or challenge.expires_at <= utc_now()
         or challenge.attempt_count >= 5
     ):
+        logger.warning(
+            "official_otp_rejected",
+            extra={
+                "reason": "challenge_invalid_expired_or_consumed",
+                "challenge_id": str(body.challenge_id),
+            },
+        )
         raise HTTPException(status_code=401, detail="Invalid or expired code")
     challenge.attempt_count += 1
     code_matches = secrets.compare_digest(challenge.code_hash, _hash(body.code))
+    used_dev_code = False
     # Local-demo escape hatch. It replaces only the code comparison -- the
     # challenge must still be live and bound to a real, active official -- and
     # it still burns an attempt, so it cannot be brute-forced. Settings refuses
@@ -220,17 +234,44 @@ async def verify_official_code(
         code_matches = settings.environment in {"development", "test"} and (
             secrets.compare_digest(settings.official_dev_login_code.get_secret_value(), body.code)
         )
+        if code_matches:
+            used_dev_code = True
     if not code_matches or not challenge.official_user_id:
         await session.commit()
+        logger.warning(
+            "official_otp_rejected",
+            extra={
+                "reason": "invalid_code",
+                "challenge_id": str(body.challenge_id),
+                "attempt": challenge.attempt_count,
+            },
+        )
         raise HTTPException(status_code=401, detail="Invalid or expired code")
     official = await get_official(session, official_id=challenge.official_user_id)
     if official is None or not official.active:
+        logger.warning(
+            "official_otp_rejected",
+            extra={
+                "reason": "official_not_found_or_inactive",
+                "official_id": str(challenge.official_user_id),
+            },
+        )
         raise HTTPException(status_code=401, detail="Invalid or expired code")
     challenge.consumed_at = utc_now()
     official.last_login_at = utc_now()
     await add_official_audit(
         session, official_user_id=official.id, grievance_id=None, action="login"
     )
+    if used_dev_code:
+        logger.warning(
+            "official_dev_login_used",
+            extra={"official_id": str(official.id), "environment": settings.environment},
+        )
+    else:
+        logger.info(
+            "official_login_succeeded",
+            extra={"official_id": str(official.id), "role": official.role},
+        )
     await session.commit()
     return OfficialSession(
         access_token=_official_token(settings, official),
@@ -382,6 +423,15 @@ async def official_action(
         before=before,
         after=after,
         request_id=request_id_var.get(),
+    )
+    logger.info(
+        "official_action_recorded",
+        extra={
+            "official_id": str(official.id),
+            "grievance_id": str(grievance.id),
+            "action": body.action,
+            "role": official.role,
+        },
     )
     await session.commit()
     return after

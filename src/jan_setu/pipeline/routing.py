@@ -11,6 +11,8 @@ keeps the safe default and a jurisdiction only dispatches once someone has
 written a row saying it may.
 """
 
+import logging
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from jan_setu.db.models import JurisdictionRoute as JurisdictionRouteRow
@@ -21,6 +23,8 @@ from jan_setu.pipeline.taxonomy import (
     canonical_category_key,
 )
 from jan_setu.repositories.jurisdictions import load_jurisdiction_routes
+
+logger = logging.getLogger(__name__)
 
 
 def _as_route(row: JurisdictionRouteRow) -> JurisdictionRoute:
@@ -53,4 +57,14 @@ async def resolve_route(
         session, jurisdiction_id=jurisdiction_id, taxonomy_version=taxonomy_version
     )
     row = overrides.get(canonical)
-    return _as_route(row) if row is not None else DEMO_PROFILE.routes.get(canonical)
+    route = _as_route(row) if row is not None else DEMO_PROFILE.routes.get(canonical)
+    if route:
+        matched_rule = "override" if row is not None else "bundled"
+        logger.info(
+            "route_resolved",
+            extra={
+                "department_key": route.department_key,
+                "matched_rule": matched_rule,
+            },
+        )
+    return route

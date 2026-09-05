@@ -12,6 +12,7 @@ citizen's complaint is never lost to a flaky free-tier API.
 
 import logging
 import mimetypes
+import time
 from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Any
@@ -192,6 +193,7 @@ async def _build_and_store_pdf(
     grievance: Grievance,
     photo_bytes: bytes | None,
 ) -> None:
+    start_ms = time.perf_counter()
     department = department_for_category(grievance.category or "other")
     summary = PdfSummary(
         human_id=grievance.human_id,
@@ -208,6 +210,10 @@ async def _build_and_store_pdf(
     pdf_bytes = build_grievance_pdf(summary, photo_bytes)
     path = save_upload(settings, grievance_id=str(grievance.id), name="summary.pdf", data=pdf_bytes)
     await set_grievance_fields(session, grievance_id=grievance.id, pdf_path=path)
+    duration_ms = round((time.perf_counter() - start_ms) * 1000, 2)
+    _log_stage(
+        "pdf_generated", grievance.id, duration_ms=duration_ms, pdf_size_bytes=len(pdf_bytes)
+    )
 
 
 def render_confirmation_summary(grievance: Grievance) -> str:
@@ -238,6 +244,7 @@ async def run_pipeline(
 
         address = grievance.location_address
         if not address and grievance.location_latitude is not None:
+            start_geocode = time.perf_counter()
             geocode = await reverse_geocode_cached(
                 session,
                 settings,
@@ -246,12 +253,24 @@ async def run_pipeline(
                 http_client,
             )
             address = geocode.display_address
+            geocode_duration = round((time.perf_counter() - start_geocode) * 1000, 2)
+            _log_stage(
+                "geocoded", grievance_id, duration_ms=geocode_duration, has_address=bool(address)
+            )
 
+        start_photo = time.perf_counter()
         photo_bytes, photo_mime = await _fetch_photo(
             settings,
             http_client,
             photo_media_id=grievance.photo_media_id,
             photo_path=grievance.photo_path,
+        )
+        photo_duration = round((time.perf_counter() - start_photo) * 1000, 2)
+        _log_stage(
+            "photo_fetched",
+            grievance_id,
+            duration_ms=photo_duration,
+            photo_available=bool(photo_bytes),
         )
         extraction = await extract_issue(
             session,
@@ -274,6 +293,11 @@ async def run_pipeline(
             category_key=extraction.category_id,
             jurisdiction_id=grievance.jurisdiction_id or DEMO_JURISDICTION_ID,
         )
+        if route is None:
+            logger.warning(
+                "routing_fallback",
+                extra={"grievance_id": str(grievance_id), "reason": "no_route_found"},
+            )
         _log_stage(
             "extract_and_route",
             grievance_id,
@@ -294,6 +318,10 @@ async def run_pipeline(
             flags.append("classification_failed")
             if photo_bytes is not None:
                 flags.append("image_check_degraded")
+            logger.warning(
+                "classification_fallback",
+                extra={"grievance_id": str(grievance_id), "reason": extraction.degradation_reason},
+            )
         if policy.needs_official_review:
             flags.append("official_review_required")
         if extraction.multiple_issues:
@@ -409,6 +437,10 @@ async def accept_photo_mismatch(
         if grievance is None:
             raise ValueError(f"grievance {grievance_id} not found")
         if grievance.status != "photo_mismatch":
+            logger.warning(
+                "accept_photo_skipped",
+                extra={"grievance_id": str(grievance_id), "reason": "not_in_photo_mismatch_status"},
+            )
             return
 
         photo_bytes, _ = await _fetch_photo(
@@ -494,6 +526,8 @@ async def recheck_image(
             await _build_and_store_pdf(session, settings, grievance, photo_bytes)
         await add_grievance_event(session, grievance_id=grievance_id, status=next_status)
         await session.commit()
+
+        _log_stage("image_rechecked", grievance_id, image_match_status=image_match_status)
 
         department = department_for_category(grievance.category or "other")
         return PipelineResult(
@@ -728,6 +762,10 @@ async def finalize_grievance(
             exclude_grievance_id=str(grievance_id),
         )
         if duplicate is not None:
+            logger.warning(
+                "dedup_suppressed",
+                extra={"grievance_id": str(grievance_id), "reason": "duplicate_within_window"},
+            )
             master = duplicate.master
             new_count = master.report_count + 1
             await set_grievance_fields(
@@ -776,6 +814,10 @@ async def dispatch_grievance(
             raise ValueError(f"grievance {grievance_id} not found")
         snapshot = grievance.routing_snapshot or {}
         if snapshot and not snapshot.get("dispatch_enabled", False):
+            logger.warning(
+                "dispatch_disabled",
+                extra={"grievance_id": str(grievance_id), "reason": "dispatch_not_enabled"},
+            )
             await set_grievance_fields(
                 session,
                 grievance_id=grievance_id,
@@ -811,12 +853,23 @@ async def dispatch_grievance(
             artifact_path(settings, grievance.pdf_path).read_bytes() if grievance.pdf_path else b""
         )
 
+        start_dispatch = time.perf_counter()
         try:
             ref = await dispatcher.dispatch(
                 human_id=grievance.human_id,
                 department=department,
                 summary=summary,
                 pdf_bytes=pdf_bytes,
+            )
+            dispatch_duration = round((time.perf_counter() - start_dispatch) * 1000, 2)
+            logger.info(
+                "dispatch_sent",
+                extra={
+                    "grievance_id": str(grievance_id),
+                    "department": department.key,
+                    "duration_ms": dispatch_duration,
+                    "status": "success",
+                },
             )
         except DispatchError:
             attempts = grievance.dispatch_attempts + 1

@@ -140,13 +140,23 @@ async def send_pending(
         )
         return "failed"
 
+    meta_message_id = _provider_message_id(response)
     await mark_outbound(
         session,
         message_id=message_id,
         status="sent",
-        meta_message_id=_provider_message_id(response),
+        meta_message_id=meta_message_id,
     )
     await session.commit()
+    logger.info(
+        "dispatch_sent",
+        extra={
+            "message_id": str(message_id),
+            "reply_kind": message.reply_kind,
+            "conversation_id": str(message.conversation_id),
+            "meta_message_id": meta_message_id,
+        },
+    )
     return "sent"
 
 

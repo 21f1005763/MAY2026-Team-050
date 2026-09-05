@@ -63,3 +63,29 @@ def test_noisy_library_loggers_are_restored_at_debug():
     configure_logging("DEBUG", stream=io.StringIO())
     for name in NOISY_LIBRARY_LOGGERS:
         assert logging.getLogger(name).level == logging.NOTSET
+
+
+def test_text_format_renders_extra_fields():
+    # LOG_FORMAT defaults to "text"; a plain logging.Formatter renders only
+    # asctime/level/name/message, so every extra={...} in the codebase would be
+    # silently dropped in the default config.
+    stream = io.StringIO()
+    root_logger = logging.getLogger()
+    old_handlers = root_logger.handlers[:]
+    try:
+        configure_logging("INFO", log_format="text", stream=stream)
+        logging.getLogger("jan_setu.test").info(
+            "dispatch_sent",
+            extra={"grievance_id": "g-1", "duration_ms": 42.1, "address": None},
+        )
+    finally:
+        root_logger.handlers = old_handlers
+
+    line = stream.getvalue()
+    assert "dispatch_sent" in line
+    assert "grievance_id=g-1" in line
+    assert "duration_ms=42.1" in line
+    assert "address" not in line  # None-valued fields stay out of the line
+    # super().format() stamps message/asctime onto the record; they must not echo
+    assert "message=" not in line
+    assert "asctime=" not in line
